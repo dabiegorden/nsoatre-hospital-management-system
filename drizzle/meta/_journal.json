@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791726265439,
+      "tag": "0000_lyrical_hiroim",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791727393124,
+      "tag": "0001_mongo_to_postgres",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791727400073,
+      "tag": "0002_drop_demo_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791728085983,
+      "tag": "0003_legacy_safe_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791729100709,
+      "tag": "0004_remove_mongo_leftovers",
+      "breakpoints": true
+    }
+  ]
+}
