@@ -3,8 +3,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { describeDbError, pickInput, toApi } from "@/lib/db-utils";
 import { appointmentRelations, combineDateTime } from "@/lib/appointments";
-import { appointments } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { bookNextAncContact } from "@/lib/anc-booking";
+import { reminderConfig } from "@/lib/reminders/config";
+import { appointments, type Appointment } from "@/models/schema";
+import { requireAdmin } from "@/lib/api-auth";
 
 // Fields managed by the system that clients may not set directly.
 const SYSTEM_MANAGED = [
@@ -16,7 +18,29 @@ const SYSTEM_MANAGED = [
   "callAttempts",
   "reminderSent",
   "missedCheckProcessed",
+  "dayBeforeReminderAt",
+  "sameDayReminderAt",
+  "missedAt",
+  "nextCallAt",
+  "relativeNotifiedAt",
+  "escalatedAt",
+  "followUpCompletedAt",
+  "autoScheduledFromId",
 ];
+
+// Clears the automatic reminder pipeline when an appointment is rescheduled.
+const REMINDER_RESET = {
+  dayBeforeReminderAt: null,
+  sameDayReminderAt: null,
+  missedAt: null,
+  nextCallAt: null,
+  relativeNotifiedAt: null,
+  escalatedAt: null,
+  followUpCompletedAt: null,
+  missedNotificationSent: false,
+  missedCheckProcessed: false,
+  voiceCallAttempts: 0,
+};
 
 // GET - Fetch single appointment by ID
 export async function GET(
@@ -24,21 +48,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;
 
@@ -76,22 +87,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verify admin authentication
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;
     const body = await request.json();
@@ -124,8 +121,37 @@ export async function PATCH(
       );
     }
 
+    const newStatus = updates.status ?? existing.status;
+    const statusChanged = newStatus !== existing.status;
+    const timeChanged =
+      updates.appointmentDateTime !== undefined &&
+      updates.appointmentDateTime.getTime() !== existing.appointmentDateTime.getTime();
+
+    // Rescheduling (new time, or back to "scheduled") restarts the reminders.
+    if (newStatus === "scheduled" && (timeChanged || statusChanged)) {
+      Object.assign(updates, REMINDER_RESET);
+    }
+    // Staff marking a visit missed starts the follow-up chain.
+    if (statusChanged && newStatus === "missed" && !existing.missedAt) {
+      Object.assign(updates, {
+        missedAt: new Date(),
+        missedCheckProcessed: true,
+        nextCallAt: new Date(Date.now() + reminderConfig.firstCallDelay),
+      });
+    }
+
     if (Object.keys(updates).length > 0) {
       await db.update(appointments).set(updates).where(eq(appointments.id, id));
+    }
+
+    // A completed visit books the next WHO antenatal contact automatically.
+    let nextAppointment = null;
+    if (statusChanged && newStatus === "completed") {
+      try {
+        nextAppointment = await bookNextAncContact({ ...existing, ...updates } as Appointment);
+      } catch (error) {
+        console.error("Failed to book next ANC contact:", error);
+      }
     }
 
     const updatedAppointment = await db.query.appointments.findFirst({
@@ -135,8 +161,11 @@ export async function PATCH(
 
     return NextResponse.json(
       {
-        message: "Appointment updated successfully",
+        message: nextAppointment
+          ? "Appointment updated. Next antenatal visit booked automatically."
+          : "Appointment updated successfully",
         data: toApi(updatedAppointment),
+        nextAppointment: nextAppointment ? toApi(nextAppointment) : null,
       },
       { status: 200 }
     );
@@ -164,22 +193,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verify admin authentication
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;
 

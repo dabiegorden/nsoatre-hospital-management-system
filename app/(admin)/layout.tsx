@@ -11,13 +11,15 @@ const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
     <SidebarProvider defaultOpen={defaultOpen}>
       <div className="flex min-h-screen w-full">
         {/* LEFT: Sidebar */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 print:hidden">
           <AdminSidebar />
         </div>
 
         {/* RIGHT: Navbar + Content */}
         <main className="flex-1 w-full overflow-hidden">
-          <AdminNavbar />
+          <div className="print:hidden">
+            <AdminNavbar />
+          </div>
           <div className="px-4">{children}</div>
         </main>
       </div>

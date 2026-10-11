@@ -8,28 +8,15 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { pregnantWomen, visitRecords } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
 
@@ -67,21 +54,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
     const body = await request.json();

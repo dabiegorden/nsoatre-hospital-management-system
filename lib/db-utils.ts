@@ -202,3 +202,17 @@ export function describeDbError(
 export function isUniqueViolation(error: any) {
   return (error?.code ?? error?.cause?.code) === "23505";
 }
+
+/**
+ * Relational-query `extras` adding each patient's missed-appointment count
+ * (used for the risk score). Pass as `extras: missedAppointmentsExtra`.
+ */
+export const missedAppointmentsExtra = (
+  table: { id: unknown },
+  { sql }: { sql: typeof import("drizzle-orm").sql }
+) => ({
+  missedAppointments:
+    sql<number>`(select count(*)::int from appointments a where a.patient_id = ${table.id} and a.status = 'missed')`.as(
+      "missed_appointments"
+    ),
+});

@@ -68,9 +68,18 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useRouter } from "next/navigation";
+import { RiskBadge } from "@/components/risk-badge";
+import { assessRisk, type RiskInput } from "@/lib/risk";
+
+const riskOf = (woman: RiskInput) => {
+  const { level, reasons } = assessRisk(woman);
+  return { level, reasons };
+};
 
 interface PregnantWoman {
   _id: string;
+  missedAppointments?: number;
+  preferredLanguage?: "twi" | "english" | null;
   fullName: string;
   residentialAddress: string;
   location: string;
@@ -1616,9 +1625,10 @@ export default function PregnantWomenPage() {
                           <TableCell className="font-medium py-4">
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <span className="text-gray-900">
-                                {woman.fullName}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-gray-900">{woman.fullName}</span>
+                                <RiskBadge {...riskOf(woman)} />
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="py-4">
@@ -1719,6 +1729,9 @@ export default function PregnantWomenPage() {
                               <p className="font-semibold text-gray-900 wrap-break-word">
                                 {woman.fullName}
                               </p>
+                              <div className="mt-1">
+                                <RiskBadge {...riskOf(woman)} />
+                              </div>
                               <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-medium text-xs mt-1">
                                 {woman.folderNumber}
                               </Badge>

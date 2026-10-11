@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { AutomationStatus } from "@/components/automation-status";
 
 interface userInfo {
   name: string;
+  phoneNumber?: string | null;
   email: string;
   role: string;
 }
@@ -30,6 +32,8 @@ interface DashboardStats {
   appointmentsToday: number;
   smsSent: number;
   callsMade: number;
+  callsAnswered?: number;
+  smsFailed?: number;
   completedAppointments: number;
   totalAppointments: number;
   totalUsers: number;
@@ -180,20 +184,23 @@ const DashboardPage = () => {
     },
   ];
 
+  const rate = (part: number, whole: number) =>
+    whole > 0 ? Math.round((part / whole) * 100) : 0;
+
   const communicationStats = [
     {
       id: 1,
-      channel: "Automated Calls",
+      channel: "Reminder calls placed · answer rate",
       count: stats?.callsMade ?? 0,
       icon: Phone,
-      success: 94,
+      success: rate(stats?.callsAnswered ?? 0, stats?.callsMade ?? 0),
     },
     {
       id: 2,
-      channel: "SMS Messages",
+      channel: "SMS sent · delivery rate",
       count: stats?.smsSent ?? 0,
       icon: MessageSquare,
-      success: 98,
+      success: rate(stats?.smsSent ?? 0, (stats?.smsSent ?? 0) + (stats?.smsFailed ?? 0)),
     },
   ];
 
@@ -210,6 +217,8 @@ const DashboardPage = () => {
           } Here's what's happening with your patients today.`}
         </p>
       </div>
+
+      <AutomationStatus defaultPhone={user?.phoneNumber ?? ""} />
 
       {/* Stats Grid - Updated to display 8 cards with responsive grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

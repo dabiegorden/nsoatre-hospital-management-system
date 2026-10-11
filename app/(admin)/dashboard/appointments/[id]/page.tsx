@@ -22,6 +22,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CallHistory } from "@/components/call-history";
+import { IvrTestCall } from "@/components/ivr-test-call";
+import {
+  ReminderTimeline,
+  type ReminderFields,
+} from "@/components/reminder-timeline";
 import {
   Table,
   TableBody,
@@ -31,7 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface Appointment {
+interface Appointment extends ReminderFields {
   _id: string;
   patientName: string;
   patientPhoneNumber: string;
@@ -65,6 +71,7 @@ export default function AppointmentDetailsPage() {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAllAppointments, setLoadingAllAppointments] = useState(true);
+  const [callsRefreshKey, setCallsRefreshKey] = useState(0);
   const appointmentId = params.id as string;
 
   useEffect(() => {
@@ -562,10 +569,48 @@ Report Generated: ${new Date().toLocaleString()}
                 )}
               </CardContent>
             </Card>
+
+            {/* Call history with AI-extracted outcomes */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <PhoneCall className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Call History
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CallHistory appointmentId={appointment._id} refreshKey={callsRefreshKey} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column - Patient & Contact Info */}
           <div className="space-y-6">
+            {/* Automatic reminder pipeline */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Automatic Reminders
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ReminderTimeline appointment={appointment} />
+                <IvrTestCall
+                  appointmentId={appointment._id}
+                  onFinished={() => setCallsRefreshKey((k) => k + 1)}
+                />
+              </CardContent>
+            </Card>
+
             {/* Patient Information Card */}
             <Card className="border-0 shadow-lg">
               <CardHeader className="pb-3">

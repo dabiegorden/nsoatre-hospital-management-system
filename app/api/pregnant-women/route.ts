@@ -6,6 +6,7 @@ import {
   getPagination,
   isUniqueViolation,
   likePattern,
+  missedAppointmentsExtra,
   pickInput,
   toApi,
   userSummary,
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
         db.query.pregnantWomen.findMany({
           where,
           with: { registeredBy: userSummary },
+          extras: missedAppointmentsExtra,
           orderBy: desc(pregnantWomen.createdAt),
           limit,
           offset,

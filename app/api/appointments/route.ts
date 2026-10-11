@@ -14,28 +14,13 @@ import {
   combineDateTime,
 } from "@/lib/appointments";
 import { appointments, pregnantWomen } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 
 // GET - List all appointments with pagination and filtering
 export async function GET(request: NextRequest) {
   try {
-    // ✅ Verify admin authentication
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    // ✅ Await verifyToken (jose is async)
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     // ✅ Get query parameters for pagination and filtering
     const searchParams = request.nextUrl.searchParams;
@@ -117,23 +102,8 @@ export async function GET(request: NextRequest) {
 // POST - Create new appointment
 export async function POST(request: NextRequest) {
   try {
-    // ✅ Verify admin authentication
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    // ✅ Await verifyToken
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const body = await request.json();
 

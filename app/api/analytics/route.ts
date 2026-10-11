@@ -1,0 +1,27 @@
+import { type NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/api-auth";
+import { getAnalytics } from "@/lib/analytics";
+
+// GET ?months=6 - Attendance, reminder effectiveness and call statistics
+export async function GET(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (admin instanceof NextResponse) return admin;
+
+  const months = Math.min(
+    24,
+    Math.max(1, Number.parseInt(request.nextUrl.searchParams.get("months") || "6") || 6)
+  );
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  try {
+    return NextResponse.json({ data: await getAnalytics(from, to) });
+  } catch (error: any) {
+    console.error("Error computing analytics:", error);
+    return NextResponse.json(
+      { message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}

@@ -95,6 +95,27 @@ export const smsTemplateTypeEnum = pgEnum("sms_template_type", [
   "general",
 ]);
 
+export const languageEnum = pgEnum("call_language", ["twi", "english"]);
+
+export const followUpStatusEnum = pgEnum("follow_up_status", [
+  "none",
+  "assigned",
+  "visited",
+  "returned",
+]);
+
+export const callProviderEnum = pgEnum("call_provider", ["vapi", "arkesel"]);
+
+export const callKindEnum = pgEnum("call_kind", ["automatic", "manual", "test"]);
+
+export const callStatusEnum = pgEnum("call_status", [
+  "queued",
+  "ringing",
+  "in-progress",
+  "ended",
+  "failed",
+]);
+
 export type PersonSnapshot = { name?: string; email?: string };
 
 // ---------------------------------------------------------------------------
@@ -178,6 +199,18 @@ export const pregnantWomen = pgTable(
     tbStatus: testResultEnum().notNull().default("pending"),
     tbTreatment: boolean().notNull().default(false),
 
+    // Reminders: language chosen on a previous call skips the IVR menu
+    preferredLanguage: languageEnum(),
+    deliveryReadinessSentAt: ts(),
+
+    // Defaulter follow-up by a community health nurse
+    followUpStatus: followUpStatusEnum().notNull().default("none"),
+    followUpAssigneeId: text().references(() => users.id, {
+      onDelete: "set null",
+    }),
+    followUpNote: text(),
+    followUpUpdatedAt: ts(),
+
     // Metadata
     registeredById: text().references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -220,11 +253,24 @@ export const appointments = pgTable(
     missedNotificationSent: boolean().notNull().default(false),
     missedCheckProcessed: boolean().notNull().default(false),
     lastCallAttempt: ts(),
+
+    // Automatic reminder pipeline (see lib/reminders/engine.ts). Each step
+    // is claimed by setting its timestamp, so it runs at most once.
+    dayBeforeReminderAt: ts(),
+    sameDayReminderAt: ts(),
+    missedAt: ts(),
+    nextCallAt: ts(),
+    relativeNotifiedAt: ts(),
+    escalatedAt: ts(),
+    followUpCompletedAt: ts(), // patient reached; stops the call chain
+    autoScheduledFromId: text(), // set when created by the WHO ANC schedule
+
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index().on(t.appointmentDateTime),
+    index().on(t.status, t.nextCallAt),
     index().on(t.status),
     index().on(t.createdAt),
     index().on(t.patientPhoneNumber),
@@ -409,11 +455,72 @@ export const reminderLogs = pgTable(
   ]
 );
 
+// One row per reminder call (Vapi IVR call or Arkesel voice fallback), with
+// the outcome extracted after the call.
+export const callLogs = pgTable(
+  "call_logs",
+  {
+    id: id(),
+    appointmentId: text().references(() => appointments.id, {
+      onDelete: "set null",
+    }),
+    pregnantWomanId: text().references(() => pregnantWomen.id, {
+      onDelete: "set null",
+    }),
+    patientName: text(),
+    phoneNumber: text(),
+    provider: callProviderEnum().notNull(),
+    kind: callKindEnum().notNull(),
+    attempt: integer().notNull().default(1),
+    providerCallId: text().unique("call_logs_provider_call_id_unique"),
+    status: callStatusEnum().notNull().default("queued"),
+    endedReason: text(),
+    answered: boolean(),
+    language: languageEnum(),
+    durationSeconds: doublePrecision(),
+    cost: doublePrecision(),
+    summary: text(),
+    reasonForMissing: text(),
+    reasonCategory: text(),
+    dangerSigns: jsonb().$type<string[]>(),
+    wantsToReschedule: boolean(),
+    preferredReturnDate: text(),
+    transcript: text(),
+    recordingUrl: text(),
+    outcomeProcessedAt: ts(),
+    dangerAlertSentAt: ts(),
+    error: text(),
+    initiatedBy: jsonb().$type<PersonSnapshot>(),
+    startedAt: ts(),
+    endedAt: ts(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index().on(t.appointmentId),
+    index().on(t.pregnantWomanId),
+    index().on(t.createdAt),
+    index().on(t.status, t.outcomeProcessedAt),
+  ]
+);
+
+// Lease-based lock so only one server instance runs the reminder tick.
+export const schedulerLocks = pgTable("scheduler_locks", {
+  name: text().primaryKey(),
+  lockedUntil: ts().notNull(),
+  lastRunAt: ts(),
+  lastResult: jsonb(),
+});
+
 export const smsTemplates = pgTable("sms_templates", {
   id: id(),
   name: text().notNull().unique("sms_templates_name_unique"),
   message: text().notNull(),
   type: smsTemplateTypeEnum().notNull().default("general"),
+  // Automatic reminders use the active template matching purpose + language
+  // (see lib/reminders/templates.ts); built-in English text otherwise.
+  purpose: text(),
+  language: languageEnum().notNull().default("english"),
   isActive: boolean().notNull().default(true),
   createdBy: jsonb().$type<PersonSnapshot>(),
   createdAt: createdAt(),
@@ -439,17 +546,33 @@ export const pregnantWomenRelations = relations(
     appointments: many(appointments),
     visitRecords: many(visitRecords),
     pastRecords: many(pastRecords),
+    callLogs: many(callLogs),
   })
 );
 
-export const appointmentsRelations = relations(appointments, ({ one }) => ({
-  patient: one(pregnantWomen, {
-    fields: [appointments.patientId],
-    references: [pregnantWomen.id],
+export const appointmentsRelations = relations(
+  appointments,
+  ({ one, many }) => ({
+    patient: one(pregnantWomen, {
+      fields: [appointments.patientId],
+      references: [pregnantWomen.id],
+    }),
+    createdBy: one(users, {
+      fields: [appointments.createdById],
+      references: [users.id],
+    }),
+    callLogs: many(callLogs),
+  })
+);
+
+export const callLogsRelations = relations(callLogs, ({ one }) => ({
+  appointment: one(appointments, {
+    fields: [callLogs.appointmentId],
+    references: [appointments.id],
   }),
-  createdBy: one(users, {
-    fields: [appointments.createdById],
-    references: [users.id],
+  pregnantWoman: one(pregnantWomen, {
+    fields: [callLogs.pregnantWomanId],
+    references: [pregnantWomen.id],
   }),
 }));
 

@@ -15,6 +15,10 @@ import {
   CalendarRange,
   PhoneCall,
   User2,
+  PhoneIncoming,
+  UserX,
+  BarChart3,
+  MessageSquareText,
 } from "lucide-react";
 
 export const AdminSidebarMenu = [
@@ -56,8 +60,32 @@ export const AdminSidebarMenu = [
   },
   {
     id: 7,
-    title: "Calls/SMS Remindes",
+    title: "SMS & Call Log",
     href: "/dashboard/reminders",
     icon: PhoneCall,
+  },
+  {
+    id: 8,
+    title: "Calls & Outcomes",
+    href: "/dashboard/calls",
+    icon: PhoneIncoming,
+  },
+  {
+    id: 9,
+    title: "Defaulters",
+    href: "/dashboard/defaulters",
+    icon: UserX,
+  },
+  {
+    id: 10,
+    title: "Analytics & Reports",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+  {
+    id: 11,
+    title: "SMS Templates (Twi)",
+    href: "/dashboard/sms-templates",
+    icon: MessageSquareText,
   },
 ];

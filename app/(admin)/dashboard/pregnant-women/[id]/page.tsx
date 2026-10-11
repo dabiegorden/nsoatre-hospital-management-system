@@ -28,9 +28,14 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VisitRecordForm from "@/components/visit-record-form";
 import VisitHistory from "@/components/visit-history";
+import { CareInsights } from "@/components/care-insights";
+import { CallHistory } from "@/components/call-history";
 
 interface PregnantWoman {
   _id: string;
+  missedAppointments?: number;
+  preferredLanguage?: "twi" | "english" | null;
+  followUpStatus?: "none" | "assigned" | "visited" | "returned";
   fullName: string;
   residentialAddress: string;
   phoneNumber: string;
@@ -446,7 +451,7 @@ Generated: ${new Date().toLocaleString()}
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-emerald-100 p-1">
+          <TabsList className="grid w-full max-w-lg grid-cols-3 bg-emerald-100 p-1">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:bg-white"
@@ -459,9 +464,16 @@ Generated: ${new Date().toLocaleString()}
             >
               Monthly Visits
             </TabsTrigger>
+            <TabsTrigger
+              value="calls"
+              className="data-[state=active]:bg-white"
+            >
+              Reminder Calls
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            <CareInsights woman={woman} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Personal Information */}
               <Card className="border-2 border-emerald-100 shadow-md">
@@ -918,6 +930,19 @@ Generated: ${new Date().toLocaleString()}
                 triggerRefresh={visitRefreshTrigger}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="calls" className="space-y-6">
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">
+                  Reminder calls and outcomes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CallHistory patientId={woman._id} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

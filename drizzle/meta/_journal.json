@@ -36,6 +36,20 @@
       "when": 1791729100709,
       "tag": "0004_remove_mongo_leftovers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791732334108,
+      "tag": "0005_reminder_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791735183789,
+      "tag": "0006_sms_template_language",
+      "breakpoints": true
     }
   ]
 }

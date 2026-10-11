@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { and, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 import {
   appointments,
+  callLogs,
   pastRecords,
   pregnantWomen,
   publicHealthRecords,
@@ -14,22 +15,8 @@ import {
 // GET - Fetch dashboard statistics
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    // ✅ Await token verification (jose is async)
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -47,6 +34,8 @@ export async function GET(request: NextRequest) {
       pastAppointments,
       pastRecordsCount,
       publicHealthRecordsCount,
+      smsFailedCount,
+      callsAnsweredCount,
     ] = await Promise.all([
       db.$count(pregnantWomen),
       db.$count(
@@ -66,13 +55,7 @@ export async function GET(request: NextRequest) {
           eq(reminderLogs.status, "sent")
         )
       ),
-      db.$count(
-        reminderLogs,
-        and(
-          eq(reminderLogs.reminderType, "voice"),
-          eq(reminderLogs.status, "sent")
-        )
-      ),
+      db.$count(callLogs, ne(callLogs.kind, "test")),
       db.$count(users),
       db.$count(
         appointments,
@@ -85,6 +68,11 @@ export async function GET(request: NextRequest) {
       ),
       db.$count(pastRecords),
       db.$count(publicHealthRecords),
+      db.$count(
+        reminderLogs,
+        and(eq(reminderLogs.reminderType, "sms"), eq(reminderLogs.status, "failed"))
+      ),
+      db.$count(callLogs, and(ne(callLogs.kind, "test"), eq(callLogs.answered, true))),
     ]);
 
     return NextResponse.json(
@@ -95,6 +83,8 @@ export async function GET(request: NextRequest) {
           appointmentsToday,
           smsSent: smsSentCount,
           callsMade: callsMadeCount,
+          callsAnswered: callsAnsweredCount,
+          smsFailed: smsFailedCount,
           completedAppointments,
           totalAppointments,
           totalUsers,

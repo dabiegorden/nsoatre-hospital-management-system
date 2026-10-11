@@ -122,7 +122,7 @@ export function AppointmentReminderButtons({
         return;
       }
 
-      toast.success(`Voice call initiated for ${patientName}!`);
+      toast.success(data.message || `Voice call started for ${patientName}`);
     } catch (error: any) {
       console.error("[v0] Voice Call Error:", error);
       toast.error(error.message || "Failed to send voice reminder");
@@ -163,7 +163,7 @@ export function AppointmentReminderButtons({
           title={
             voiceCallAttempts > 0
               ? `Voice call already attempted (${voiceCallAttempts}x)`
-              : "Make voice call reminder to patient"
+              : "Call the patient: she chooses Twi (recorded message) or English (AI nurse)"
           }
         >
           {sendingVoice ? (

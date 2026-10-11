@@ -3,12 +3,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   describeDbError,
+  missedAppointmentsExtra,
   pickInput,
   toApi,
   userSummary,
 } from "@/lib/db-utils";
 import { pastRecords, pregnantWomen } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 
 // GET - Fetch a single pregnant woman record
 export async function GET(
@@ -16,21 +17,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params; // ✅ Await params (Next.js 15/16)
 
@@ -44,6 +32,7 @@ export async function GET(
     const woman = await db.query.pregnantWomen.findFirst({
       where: eq(pregnantWomen.id, id),
       with: { registeredBy: userSummary },
+      extras: missedAppointmentsExtra,
     });
 
     if (!woman) {
@@ -75,21 +64,8 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params; // ✅ Await params
 
@@ -190,21 +166,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params; // ✅ Await params
 
