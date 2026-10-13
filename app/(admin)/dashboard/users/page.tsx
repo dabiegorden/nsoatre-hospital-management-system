@@ -34,6 +34,7 @@ import {
   UserPlus,
   Shield,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,6 +64,7 @@ export default function UsersPage() {
   const [dialogMode, setDialogMode] = useState<"edit" | "delete">("edit");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
 
   const fetchUsers = async () => {
     try {
@@ -97,12 +99,14 @@ export default function UsersPage() {
   );
 
   const adminCount = users.filter((u) => u.role === "admin").length;
+  const adminsWithoutPhone = users.filter((u) => u.role === "admin" && !u.phoneNumber);
   const userCount = users.filter((u) => u.role === "user").length;
 
   const handleOpenDialog = (user: User, mode: "edit" | "delete") => {
     setSelectedUser(user);
     setDialogMode(mode);
     setSelectedRole(user.role);
+    setPhoneInput(user.phoneNumber ?? "");
     setDialogOpen(true);
   };
 
@@ -116,20 +120,20 @@ export default function UsersPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ role: selectedRole }),
+        body: JSON.stringify({ role: selectedRole, phoneNumber: phoneInput }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error("Failed to update user");
+        throw new Error(data.error || "Failed to update user");
       }
 
-      const updatedUser = await response.json();
-      setUsers(users.map((u) => (u.id === selectedUser.id ? updatedUser : u)));
+      setUsers(users.map((u) => (u.id === selectedUser.id ? { ...u, ...data.user } : u)));
       toast.success("User updated successfully");
       setDialogOpen(false);
     } catch (error) {
       console.error("Update user error:", error);
-      toast.error("Failed to update user");
+      toast.error((error as Error).message || "Failed to update user");
     } finally {
       setIsSubmitting(false);
     }
@@ -249,6 +253,20 @@ export default function UsersPage() {
           </Card>
         </div>
 
+        {adminsWithoutPhone.length > 0 && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-amber-600" />
+            <p className="text-sm">
+              <strong>
+                {adminsWithoutPhone.map((u) => u.name).join(", ")}
+              </strong>{" "}
+              {adminsWithoutPhone.length === 1 ? "has" : "have"} no phone number, so{" "}
+              they will not receive missed-appointment,
+              escalation or danger-sign alert SMS. Click the edit button to add one.
+            </p>
+          </div>
+        )}
+
         {/* Search Section */}
         <Card className="border-emerald-100 shadow-sm">
           <CardContent className="p-6">
@@ -316,7 +334,9 @@ export default function UsersPage() {
                             {user.email}
                           </td>
                           <td className="py-4 px-6 text-gray-600">
-                            {user.phoneNumber}
+                            {user.phoneNumber ?? (
+                              <span className="text-gray-400 italic">Not set</span>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             <span
@@ -424,7 +444,9 @@ export default function UsersPage() {
                                 Phone
                               </p>
                               <p className="text-sm text-gray-900">
-                                {user.phoneNumber}
+                                {user.phoneNumber ?? (
+                                  <span className="text-gray-400 italic">Not set</span>
+                                )}
                               </p>
                             </div>
                             <div>
@@ -463,11 +485,11 @@ export default function UsersPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl">
-              {dialogMode === "edit" ? "Edit User Role" : "Delete User"}
+              {dialogMode === "edit" ? "Edit User" : "Delete User"}
             </DialogTitle>
             <DialogDescription>
               {dialogMode === "edit"
-                ? "Update the user's access level and permissions"
+                ? "Update the user's role and phone number"
                 : "This action cannot be undone. All user data will be permanently removed."}
             </DialogDescription>
           </DialogHeader>
@@ -492,6 +514,30 @@ export default function UsersPage() {
                   </p>
                 </div>
               </div>
+
+              {dialogMode === "edit" && (
+                <div>
+                  <label
+                    htmlFor="user-phone"
+                    className="text-sm font-semibold text-gray-700 mb-2 block"
+                  >
+                    Phone Number
+                  </label>
+                  <Input
+                    id="user-phone"
+                    type="tel"
+                    placeholder="e.g. 0244123456"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    className="h-11 border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                  {selectedRole === "admin" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Admins receive missed-appointment and danger-sign alert SMS on this number.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {dialogMode === "edit" && (
                 <div>
@@ -557,7 +603,7 @@ export default function UsersPage() {
                   {dialogMode === "edit" ? "Updating..." : "Deleting..."}
                 </>
               ) : (
-                <>{dialogMode === "edit" ? "Update Role" : "Delete User"}</>
+                <>{dialogMode === "edit" ? "Save Changes" : "Delete User"}</>
               )}
             </Button>
           </DialogFooter>

@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/api-auth";
 import { twiAudioUrl, vapiServerConfig } from "@/lib/calls/place-call";
 import { reminderConfig } from "@/lib/reminders/config";
 import { isDryRun } from "@/lib/reminders/dry-run";
+import { getAdminPhones } from "@/lib/reminders/notify";
 import { isVapiConfigured } from "@/lib/vapi/client";
 import { schedulerLocks } from "@/models/schema";
 
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
       vapiConfigured: isVapiConfigured() && Boolean(process.env.VAPI_PHONE_NUMBER_ID),
       webhookConfigured: Boolean(vapiServerConfig()),
       twiAudioConfigured: Boolean(twiAudioUrl()),
+      adminAlertPhones: (await getAdminPhones()).length,
       smsHours: reminderConfig.smsHours,
       callHours: reminderConfig.callHours,
       missedGraceMinutes: reminderConfig.missedGrace / 60_000,

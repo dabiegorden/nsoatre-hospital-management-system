@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { verifyToken } from "@/lib/auth";
+import { toE164 } from "@/lib/phone";
 import { db } from "@/lib/db";
 import { users } from "@/models/schema";
 
-// PATCH update user role
+// PATCH update user role and/or phone number (admins receive alert SMS on it)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,21 +26,40 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const { role } = await request.json();
+    const body = await request.json();
+    const updates: { role?: "admin" | "user"; phoneNumber?: string | null } = {};
 
-    if (!role || !["admin", "user"].includes(role)) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    if (body.role !== undefined) {
+      if (!["admin", "user"].includes(body.role)) {
+        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      }
+      updates.role = body.role;
+    }
+
+    if (body.phoneNumber !== undefined) {
+      const raw = typeof body.phoneNumber === "string" ? body.phoneNumber.trim() : "";
+      const phone = raw ? toE164(raw) : null;
+      if (raw && !phone) {
+        return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+      }
+      updates.phoneNumber = phone;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
     const [user] = await db
       .update(users)
-      .set({ role })
+      .set(updates)
       .where(eq(users.id, id))
       .returning({
         id: users.id,
         email: users.email,
         name: users.name,
+        phoneNumber: users.phoneNumber,
         role: users.role,
+        createdAt: users.createdAt,
       });
 
     if (!user) {
@@ -47,7 +67,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({
-      message: "User role updated successfully",
+      message: "User updated successfully",
       user,
     });
   } catch (error: any) {

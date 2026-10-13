@@ -1,12 +1,13 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { arkeselService } from "@/lib/arkesel-service";
 import { getPatientRisk } from "@/lib/patient-risk";
 import { currentGestationalWeeks } from "@/lib/risk";
 import { toE164 } from "@/lib/phone";
 import { isDryRun } from "@/lib/reminders/dry-run";
-import { isVapiConfigured, vapiRequest, VapiError } from "@/lib/vapi/client";
+import { isVapiConfigured, vapiRequest, VapiError, type VapiCall } from "@/lib/vapi/client";
+import { classifyEndedCall } from "@/lib/calls/classify";
 import { buildReminderSquad, type CallLanguage, type IvrContext } from "@/lib/vapi/ivr";
 import { getCallOutcomeOutputId } from "@/lib/vapi/call-outcome";
 import {
@@ -187,6 +188,37 @@ export async function sendTwiVoiceFallback(params: {
   };
 }
 
+const START_CHECK_INTERVAL_MS = 2_500;
+const START_CHECK_ATTEMPTS = 4;
+
+/**
+ * Watches a new Vapi call for ~10 s. Returns Vapi's ended reason when the call
+ * ended without ever getting through (routing/number problems), or null once
+ * it rings, connects, or is still pending (the webhook or poll takes over).
+ */
+async function waitForStartFailure(vapiCallId: string): Promise<string | null> {
+  for (let i = 0; i < START_CHECK_ATTEMPTS; i++) {
+    await new Promise((resolve) => setTimeout(resolve, START_CHECK_INTERVAL_MS));
+    let call: VapiCall;
+    try {
+      call = await vapiRequest<VapiCall>("GET", `/call/${vapiCallId}`);
+    } catch {
+      continue;
+    }
+    if (call.status === "ringing" || call.status === "in-progress") return null;
+    if (call.status === "ended") {
+      const { dialFailed } = classifyEndedCall({
+        endedReason: call.endedReason,
+        startedAt: call.startedAt,
+        durationSeconds: 0,
+        messages: [],
+      });
+      return dialFailed ? (call.endedReason ?? "ended before connecting") : null;
+    }
+  }
+  return null;
+}
+
 /**
  * Places an IVR call: Vapi (Twi/English menu) when possible, otherwise the
  * Arkesel Twi voice fallback. Every attempt is recorded in call_logs and
@@ -267,6 +299,29 @@ async function startCall(params: {
           language,
         })
         .where(eq(callLogs.id, log.id));
+      // Vapi accepts calls it cannot route (e.g. a US number dialling Ghana)
+      // and ends them seconds later. Catch that now so the Arkesel fallback
+      // runs straight away instead of waiting for a webhook or the next poll.
+      const startFailure = await waitForStartFailure(call.id);
+      if (startFailure) {
+        // Claim the log so a late webhook or poll can't finalise it as well.
+        const [claimed] = await db
+          .update(callLogs)
+          .set({ outcomeProcessedAt: new Date() })
+          .where(and(eq(callLogs.id, log.id), isNull(callLogs.outcomeProcessedAt)))
+          .returning({ id: callLogs.id });
+        if (claimed) {
+          console.error(`[calls] Vapi call to ${target.patientName} did not start: ${startFailure}`);
+          return sendTwiVoiceFallback({
+            target,
+            kind,
+            attempt,
+            reason: `Vapi call did not connect (${startFailure})`,
+            initiatedBy,
+            existingLogId: log.id,
+          });
+        }
+      }
       await logReminder(target, "sent", null, { vapiCallId: call.id }, initiatedBy);
       return { callLogId: log.id, provider: "vapi", success: true, awaitingOutcome: true };
     } catch (error) {

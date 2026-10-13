@@ -15,6 +15,7 @@ interface Status {
   vapiConfigured: boolean;
   webhookConfigured: boolean;
   twiAudioConfigured: boolean;
+  adminAlertPhones: number;
   callHours: { start: number; end: number };
   missedGraceMinutes: number;
 }
@@ -146,6 +147,14 @@ export function AutomationStatus({ defaultPhone = "" }: { defaultPhone?: string 
             <Check ok={status.vapiConfigured} label="AI calls (Vapi)" />
             <Check ok={status.twiAudioConfigured} label="Twi recording" />
             <Check ok={status.webhookConfigured} label="Live call webhook" />
+            <Check
+              ok={status.adminAlertPhones > 0}
+              label={
+                status.adminAlertPhones > 0
+                  ? `Admin alert SMS (${status.adminAlertPhones} number${status.adminAlertPhones === 1 ? "" : "s"})`
+                  : "Admin alert SMS (no admin phone numbers — add one under Users)"
+              }
+            />
           </div>
           <p className="text-xs text-gray-500">
             SMS the day before and on the day; a visit counts as missed {status.missedGraceMinutes} min after

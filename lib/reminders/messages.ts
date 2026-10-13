@@ -23,7 +23,13 @@ type Appt = {
   patientPhoneNumber: string;
   appointmentDateTime: Date;
   appointmentLocation: string;
+  relativePhoneNumber?: string | null;
 };
+
+/** " Relative: 024…" for staff alerts, so they can call either number. */
+function relativeContact(a: Appt) {
+  return a.relativePhoneNumber ? ` Relative: ${a.relativePhoneNumber}.` : "";
+}
 
 export const messages = {
   dayBefore: (a: Appt) =>
@@ -36,16 +42,16 @@ export const messages = {
     `Hello ${firstName(a.patientName)}, we missed you at your antenatal appointment today. Your health and your baby's health matter to us. Please come to the clinic as soon as you can. We will call you shortly. - ${CLINIC}`,
 
   missedAdmin: (a: Appt) =>
-    `Missed ANC appointment: ${a.patientName} (${a.patientPhoneNumber}), ${formatAppointment(a.appointmentDateTime)}. Automatic follow-up calls have started.`,
+    `Missed ANC appointment: ${a.patientName}, phone ${a.patientPhoneNumber}, ${formatAppointment(a.appointmentDateTime)}.${relativeContact(a)} Automatic follow-up calls have started.`,
 
   relative: (a: Appt) =>
     `Hello, this is ${CLINIC}. We have not been able to reach ${firstName(a.patientName)} about her antenatal care. Please ask her to visit the antenatal clinic or call us as soon as possible. Thank you.`,
 
   escalationAdmin: (a: Appt, attempts: number, relativeNotified: boolean) =>
-    `Follow-up needed: ${a.patientName} (${a.patientPhoneNumber}) missed her appointment on ${formatAppointment(a.appointmentDateTime)} and was not reached after ${attempts} call(s).${relativeNotified ? " Her relative has been notified by SMS." : ""} She is now on the defaulter list.`,
+    `Follow-up needed: ${a.patientName}, phone ${a.patientPhoneNumber}, missed her appointment on ${formatAppointment(a.appointmentDateTime)} and was not reached after ${attempts} call(s).${relativeContact(a)}${relativeNotified ? " Her relative has been notified by SMS." : ""} She is now on the defaulter list.`,
 
   dangerAdmin: (patientName: string, phone: string, signs: string[]) =>
-    `URGENT: ${patientName} (${phone}) reported danger signs on a follow-up call: ${signs.join(", ")}. Please contact her immediately.`,
+    `URGENT: ${patientName}, phone ${phone}, reported danger signs on a follow-up call: ${signs.join(", ")}. Please contact her immediately.`,
 
   deliveryReadiness: (patientName: string, edd: Date) =>
     `Hello ${firstName(patientName)}, your baby is due around ${edd.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "Africa/Accra" })}. Please prepare transport, emergency money, clean cloths and your health book. Come to the hospital at once if you have bleeding, severe headache or your water breaks. - ${CLINIC}`,

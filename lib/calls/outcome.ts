@@ -175,9 +175,16 @@ export async function finalizeCall(
   }
 
   // The Vapi call never got through (e.g. the number can't dial this
-  // country): deliver the Twi message through Arkesel instead.
+  // country): deliver the Twi message through Arkesel instead — unless the
+  // failure surfaced so late that a call now would come out of the blue.
   let fallbackSent = false;
-  if (result.dialFailed && log.provider === "vapi" && log.phoneNumber?.startsWith("+")) {
+  const stillTimely = Date.now() - log.createdAt.getTime() < reminderConfig.callTimeout;
+  if (
+    result.dialFailed &&
+    stillTimely &&
+    log.provider === "vapi" &&
+    log.phoneNumber?.startsWith("+")
+  ) {
     const fallback = await sendTwiVoiceFallback({
       target: {
         appointmentId: log.appointmentId,
