@@ -10,6 +10,7 @@ import {
 } from "@/lib/db-utils";
 import { pastRecords, pregnantWomen } from "@/models/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { errorMessage } from "@/lib/utils";
 
 // GET - Fetch a single pregnant woman record
 export async function GET(
@@ -49,10 +50,10 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching record:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -142,7 +143,7 @@ export async function PUT(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating record:", error);
 
     const dbError = describeDbError(error);
@@ -154,7 +155,7 @@ export async function PUT(
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -192,10 +193,10 @@ export async function DELETE(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting pregnant woman record:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

@@ -1,4 +1,4 @@
-import { getTableColumns, type Table } from "drizzle-orm";
+import { getTableColumns, type Column, type Table } from "drizzle-orm";
 
 /**
  * Thrown when request input can't be stored. `errors` is the list of
@@ -20,11 +20,11 @@ const SYSTEM_FIELDS = ["id", "_id", "createdAt", "updatedAt"];
  */
 export function pickInput<T extends Table>(
   table: T,
-  body: Record<string, any>,
+  body: Record<string, unknown> | null | undefined,
   omit: string[] = []
 ): Partial<T["$inferInsert"]> {
-  const columns = getTableColumns(table) as Record<string, any>;
-  const result: Record<string, any> = {};
+  const columns: Record<string, Column> = getTableColumns(table);
+  const result: Record<string, unknown> = {};
   const errors: string[] = [];
 
   for (const [key, raw] of Object.entries(body ?? {})) {
@@ -32,7 +32,7 @@ export function pickInput<T extends Table>(
     if (!column || raw === undefined) continue;
     if (SYSTEM_FIELDS.includes(key) || omit.includes(key)) continue;
 
-    let value: any = typeof raw === "string" ? raw.trim() : raw;
+    let value: unknown = typeof raw === "string" ? raw.trim() : raw;
 
     // "" only means something for free-text columns; elsewhere it's "no value".
     if (value === "" && (column.dataType !== "string" || column.enumValues)) {
@@ -53,7 +53,8 @@ export function pickInput<T extends Table>(
 
     switch (column.dataType) {
       case "date": {
-        const date = value instanceof Date ? value : new Date(value);
+        const date =
+          value instanceof Date ? value : new Date(value as string | number);
         if (Number.isNaN(date.getTime())) errors.push(`${key} is not a valid date`);
         else result[key] = date;
         break;
@@ -100,21 +101,26 @@ const JSON_FIELDS = new Set(["response", "sentBy"]);
  * Shapes a row into the response format the frontend expects: `id` becomes
  * `_id`, and a reference is either the loaded related object or the bare id.
  */
-export function toApi<T>(row: T): any {
+/** A row in the API's response shape (`_id` instead of `id`). */
+export type ApiRecord = Record<string, unknown>;
+
+export function toApi<T>(row: T[]): ApiRecord[];
+export function toApi<T>(row: T): ApiRecord;
+export function toApi(row: unknown): unknown {
   if (Array.isArray(row)) return row.map(toApi);
   if (row === null || typeof row !== "object" || row instanceof Date) {
     return row;
   }
 
-  const out: Record<string, any> = {};
-  for (const [key, value] of Object.entries(row as Record<string, any>)) {
+  const out: ApiRecord = {};
+  for (const [key, value] of Object.entries(row)) {
     if (key === "id") {
       out._id = value;
     } else if (key === "password") {
       continue;
     } else if (key in REFERENCE_FIELDS) {
       const field = REFERENCE_FIELDS[key];
-      if (!(field in (row as object))) out[field] = value;
+      if (!(field in row)) out[field] = value;
     } else if (JSON_FIELDS.has(key)) {
       out[key] = value;
     } else {
@@ -155,24 +161,37 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
  * Maps validation and Postgres constraint errors to a 400 response body.
  * Returns null for anything else (connection failures, bugs, ...).
  */
+/** The fields we read from a Postgres driver error. */
+type PgError = { code?: string; constraint?: string; column?: string; message?: string };
+
+/** The Postgres error behind `error` (drizzle puts it on `cause`), if any. */
+function pgErrorOf(error: unknown): PgError | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  if ("code" in error && error.code) return error as PgError;
+  const cause = "cause" in error ? error.cause : undefined;
+  return cause && typeof cause === "object" && "code" in cause
+    ? (cause as PgError)
+    : undefined;
+}
+
 export function describeDbError(
-  error: any
+  error: unknown
 ): { message: string; errors: string[] } | null {
   if (error instanceof ValidationError) {
     return { message: "Validation error", errors: error.errors };
   }
 
-  // drizzle wraps driver errors; the Postgres details live on `cause`.
-  const pgError = error?.code ? error : error?.cause;
-  const code: string | undefined = pgError?.code;
-  if (!code) return null;
+  const pgError = pgErrorOf(error);
+  const code = pgError?.code;
+  if (!pgError || !code) return null;
 
   const detail = (msg: string) => ({ message: msg, errors: [msg] });
 
   switch (code) {
     case "23505": // unique_violation
       return detail(
-        CONSTRAINT_MESSAGES[pgError.constraint] || "Record already exists"
+        (pgError.constraint && CONSTRAINT_MESSAGES[pgError.constraint]) ||
+          "Record already exists"
       );
     case "23502": // not_null_violation
       return detail(
@@ -199,8 +218,8 @@ export function describeDbError(
   }
 }
 
-export function isUniqueViolation(error: any) {
-  return (error?.code ?? error?.cause?.code) === "23505";
+export function isUniqueViolation(error: unknown) {
+  return pgErrorOf(error)?.code === "23505";
 }
 
 /**

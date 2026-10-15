@@ -3,35 +3,42 @@ import { secretsMatch } from "@/lib/api-auth";
 import { applyVapiCall, applyVapiStatus } from "@/lib/calls/outcome";
 import type { VapiCall } from "@/lib/vapi/client";
 
+/** The parts of a Vapi server message this route reads. */
+type VapiServerMessage = Partial<Omit<VapiCall, "id">> & {
+  type?: string;
+  call?: VapiCall;
+};
+
 // Receives Vapi server events for reminder calls (see lib/vapi/ivr.ts).
 export async function POST(request: NextRequest) {
   if (!secretsMatch(request.headers.get("x-vapi-secret"), process.env.VAPI_WEBHOOK_SECRET)) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  let message: any;
+  let message: VapiServerMessage | undefined;
   try {
-    ({ message } = await request.json());
+    ({ message } = (await request.json()) as { message?: VapiServerMessage });
   } catch {
     return NextResponse.json({ message: "Invalid JSON" }, { status: 400 });
   }
-  if (!message?.call?.id) return NextResponse.json({});
+  const vapiCall = message?.call;
+  if (!message || !vapiCall?.id) return NextResponse.json({});
 
   try {
     switch (message.type) {
       case "status-update":
         // Live status only; the outcome comes from the end-of-call report.
-        await applyVapiStatus({ ...message.call, status: message.status ?? message.call.status });
+        await applyVapiStatus({ ...vapiCall, status: message.status ?? vapiCall.status });
         break;
       case "end-of-call-report": {
         const call: VapiCall = {
-          ...message.call,
+          ...vapiCall,
           status: "ended",
-          endedReason: message.endedReason ?? message.call.endedReason,
-          startedAt: message.startedAt ?? message.call.startedAt,
-          endedAt: message.endedAt ?? message.call.endedAt,
-          cost: message.cost ?? message.call.cost,
-          artifact: { ...message.call.artifact, ...message.artifact },
+          endedReason: message.endedReason ?? vapiCall.endedReason,
+          startedAt: message.startedAt ?? vapiCall.startedAt,
+          endedAt: message.endedAt ?? vapiCall.endedAt,
+          cost: message.cost ?? vapiCall.cost,
+          artifact: { ...vapiCall.artifact, ...message.artifact },
         };
         await applyVapiCall(call);
         break;

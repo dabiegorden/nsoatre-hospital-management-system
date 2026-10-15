@@ -9,6 +9,7 @@ import {
 } from "@/lib/db-utils";
 import { pregnantWomen, visitRecords } from "@/models/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { errorMessage } from "@/lib/utils";
 
 export async function GET(
   request: NextRequest,
@@ -40,10 +41,10 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching visit records:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -122,7 +123,7 @@ export async function POST(
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating visit record:", error);
 
     const dbError = describeDbError(error);
@@ -134,7 +135,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

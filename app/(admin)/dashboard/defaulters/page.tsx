@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { RiskBadge } from "@/components/risk-badge";
 import type { RiskLevel } from "@/lib/risk";
+import { errorMessage } from "@/lib/utils";
 
 interface Defaulter {
   patientId: string;
@@ -66,8 +67,8 @@ export default function DefaultersPage() {
       if (!res.ok) throw new Error(json.message);
       setDefaulters(json.data);
       setNotes(Object.fromEntries(json.data.map((d: Defaulter) => [d.patientId, d.followUpNote ?? ""])));
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load defaulters");
+    } catch (error) {
+      toast.error(errorMessage(error) || "Failed to load defaulters");
     } finally {
       setLoading(false);
     }

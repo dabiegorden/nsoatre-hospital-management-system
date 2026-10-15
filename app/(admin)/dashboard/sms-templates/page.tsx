@@ -31,6 +31,7 @@ import {
   SMS_PURPOSES,
   type SmsPurpose,
 } from "@/lib/reminders/template-format";
+import { errorMessage } from "@/lib/utils";
 
 interface Template {
   _id: string;
@@ -68,8 +69,8 @@ export default function SmsTemplatesPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
       setTemplates(json.data);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load templates");
+    } catch (error) {
+      toast.error(errorMessage(error) || "Failed to load templates");
     } finally {
       setLoading(false);
     }
@@ -109,8 +110,8 @@ export default function SmsTemplatesPage() {
       toast.success(editing ? "Template updated" : "Template created");
       setOpen(false);
       load();
-    } catch (error: any) {
-      toast.error(error.message || "Save failed");
+    } catch (error) {
+      toast.error(errorMessage(error) || "Save failed");
     } finally {
       setSaving(false);
     }

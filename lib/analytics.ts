@@ -2,7 +2,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { findDefaulters } from "@/lib/defaulters";
-import { assessRisk } from "@/lib/risk";
+import {
+  assessRisk,
+  riskInputFromRow,
+  type PregnantWomanRiskRow,
+} from "@/lib/risk";
 
 export interface MonthlyAttendance {
   month: string; // YYYY-MM
@@ -39,6 +43,22 @@ export interface Analytics {
   defaulters: number;
 }
 
+// Shapes of the raw SQL rows below.
+type MonthRow = { month: string; completed: number; missed: number };
+type CallTotalsRow = {
+  total: number;
+  answered: number;
+  twi: number;
+  english: number;
+  arkesel: number;
+  danger: number;
+};
+type SmsTotalsRow = { sent: number; failed: number };
+type EffectivenessRow = { reached: boolean; missed: number; returned: number };
+type ReasonRow = { category: string; count: number };
+type DangerSignRow = { sign: string; count: number };
+type PatientRow = PregnantWomanRiskRow & { missed_count: number };
+
 const pct = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 1000) / 10 : null;
 
@@ -46,14 +66,14 @@ const pct = (part: number, whole: number) =>
 export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
   const [monthlyRows, callRow, smsRow, effectivenessRow, reasonRows, dangerRows, patients, defaulters] =
     await Promise.all([
-      db.execute(sql`
+      db.execute<MonthRow>(sql`
         select to_char(date_trunc('month', appointment_date_time), 'YYYY-MM') as month,
                count(*) filter (where status = 'completed')::int as completed,
                count(*) filter (where status = 'missed')::int as missed
         from appointments
         where appointment_date_time >= ${from} and appointment_date_time < ${to}
         group by 1 order by 1`),
-      db.execute(sql`
+      db.execute<CallTotalsRow>(sql`
         select count(*)::int as total,
                count(*) filter (where answered)::int as answered,
                count(*) filter (where language = 'twi' and answered)::int as twi,
@@ -62,14 +82,14 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
                count(*) filter (where danger_alert_sent_at is not null)::int as danger
         from call_logs
         where kind <> 'test' and created_at >= ${from} and created_at < ${to}`),
-      db.execute(sql`
+      db.execute<SmsTotalsRow>(sql`
         select count(*) filter (where status = 'sent')::int as sent,
                count(*) filter (where status = 'failed')::int as failed
         from reminder_logs
         where reminder_type = 'sms' and created_at >= ${from} and created_at < ${to}`),
       // Did patients come back within 21 days of a missed visit, by whether
       // the follow-up reached them?
-      db.execute(sql`
+      db.execute<EffectivenessRow>(sql`
         select (m.follow_up_completed_at is not null) as reached,
                count(*)::int as missed,
                count(*) filter (where exists (
@@ -82,18 +102,18 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
         where m.status = 'missed' and m.patient_id is not null
           and m.appointment_date_time >= ${from} and m.appointment_date_time < ${to}
         group by 1`),
-      db.execute(sql`
+      db.execute<ReasonRow>(sql`
         select reason_category as category, count(*)::int as count
         from call_logs
         where reason_category is not null and kind <> 'test'
           and created_at >= ${from} and created_at < ${to}
         group by 1 order by 2 desc`),
-      db.execute(sql`
+      db.execute<DangerSignRow>(sql`
         select sign, count(*)::int as count
         from call_logs, jsonb_array_elements_text(coalesce(danger_signs, '[]'::jsonb)) as sign
         where kind <> 'test' and created_at >= ${from} and created_at < ${to}
         group by 1 order by 2 desc`),
-      db.execute(sql`
+      db.execute<PatientRow>(sql`
         select p.*, (select count(*)::int from appointments a
                      where a.patient_id = p.id and a.status = 'missed') as missed_count
         from pregnant_women p
@@ -101,7 +121,7 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
       findDefaulters(),
     ]);
 
-  const monthly: MonthlyAttendance[] = (monthlyRows.rows as any[]).map((r) => ({
+  const monthly: MonthlyAttendance[] = monthlyRows.rows.map((r) => ({
     month: r.month,
     completed: r.completed,
     missed: r.missed,
@@ -110,10 +130,10 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
   const completed = monthly.reduce((n, m) => n + m.completed, 0);
   const missed = monthly.reduce((n, m) => n + m.missed, 0);
 
-  const calls = (callRow.rows as any[])[0] ?? {};
-  const sms = (smsRow.rows as any[])[0] ?? {};
+  const calls: Partial<CallTotalsRow> = callRow.rows[0] ?? {};
+  const sms: Partial<SmsTotalsRow> = smsRow.rows[0] ?? {};
   const eff = { reachedMissed: 0, reachedReturned: 0, unreachedMissed: 0, unreachedReturned: 0 };
-  for (const r of effectivenessRow.rows as any[]) {
+  for (const r of effectivenessRow.rows) {
     if (r.reached) {
       eff.reachedMissed = r.missed;
       eff.reachedReturned = r.returned;
@@ -124,21 +144,8 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
   }
 
   const risk = { low: 0, moderate: 0, high: 0 };
-  for (const p of patients.rows as any[]) {
-    const level = assessRisk({
-      age: p.age,
-      bloodPressure: p.blood_pressure,
-      hb: p.hb,
-      gestationalAge: p.gestational_age,
-      expectedDeliveryDate: p.expected_delivery_date,
-      hivStatusAtRegistration: p.hiv_status_at_registration,
-      syphilisScreeningStatus: p.syphilis_screening_status,
-      hbsAgResult: p.hbs_ag_result,
-      sicklingStatus: p.sickling_status,
-      tbStatus: p.tb_status,
-      urineProtein: p.urine_protein,
-      missedAppointments: p.missed_count,
-    }).level;
+  for (const p of patients.rows) {
+    const level = assessRisk(riskInputFromRow(p, p.missed_count)).level;
     risk[level]++;
   }
 
@@ -161,8 +168,8 @@ export async function getAnalytics(from: Date, to: Date): Promise<Analytics> {
       reachedReturnRate: pct(eff.reachedReturned, eff.reachedMissed),
       unreachedReturnRate: pct(eff.unreachedReturned, eff.unreachedMissed),
     },
-    reasons: reasonRows.rows as any[],
-    dangerSigns: dangerRows.rows as any[],
+    reasons: reasonRows.rows,
+    dangerSigns: dangerRows.rows,
     risk,
     defaulters: defaulters.length,
   };

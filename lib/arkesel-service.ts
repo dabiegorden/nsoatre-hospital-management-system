@@ -1,4 +1,5 @@
 import axios from "axios";
+import { errorMessage } from "@/lib/utils";
 
 const ARKESEL_API_KEY = process.env.ARKESEL_API_KEY;
 const ARKESEL_VOICE_API_KEY = process.env.ARKESEL_VOICE_API_KEY;
@@ -36,9 +37,9 @@ export const arkeselService = {
       );
 
       return { success: true, data: response.data };
-    } catch (error: any) {
-      console.error("SMS Send Error:", error.message);
-      return { success: false, error: error.message || "Failed to send SMS" };
+    } catch (error) {
+      console.error("SMS Send Error:", errorMessage(error));
+      return { success: false, error: errorMessage(error) || "Failed to send SMS" };
     }
   },
 
@@ -107,18 +108,21 @@ export const arkeselService = {
 
       console.log("[v0] Voice call sent successfully:", response.data);
       return { success: true, data: response.data };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      const statusCode = error.response?.status;
+    } catch (error) {
+      const errorResponse = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response
+        : undefined;
+      const message = errorResponse?.data?.message || errorMessage(error);
+      const statusCode = errorResponse?.status;
 
       console.error(
-        `[v0] Voice Call Error - Status: ${statusCode}, Message: ${errorMessage}`
+        `[v0] Voice Call Error - Status: ${statusCode}, Message: ${message}`
       );
-      console.error("[v0] Full error:", error.response?.data || error.message);
+      console.error("[v0] Full error:", errorResponse?.data || errorMessage(error));
 
       return {
         success: false,
-        error: errorMessage || "Failed to make voice call",
+        error: message || "Failed to make voice call",
         statusCode,
       };
     }

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/api-auth";
 import { buildSquadForAppointment } from "@/lib/calls/place-call";
 import { appointments, callLogs } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * POST { appointmentId } - Prepares a browser test of the reminder IVR for an
@@ -58,10 +59,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       data: { publicKey, squad, callLogId: log.id, language },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error preparing web test call:", error);
     return NextResponse.json(
-      { message: "Failed to prepare test call", error: error.message },
+      { message: "Failed to prepare test call", error: errorMessage(error) },
       { status: 500 }
     );
   }

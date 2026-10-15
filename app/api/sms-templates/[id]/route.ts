@@ -33,7 +33,7 @@ export async function PATCH(
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: toApi(template) });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Update SMS template error:", error);
     const dbError = describeDbError(error);
     if (dbError) return NextResponse.json({ message: dbError.message }, { status: 400 });

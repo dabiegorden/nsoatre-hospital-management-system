@@ -20,7 +20,7 @@ export function isVapiConfigured() {
 }
 
 /** Minimal REST client for the Vapi API (server-side only). */
-export async function vapiRequest<T = any>(
+export async function vapiRequest<T = unknown>(
   method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown
@@ -58,8 +58,8 @@ export interface VapiCall {
     transcript?: string;
     recordingUrl?: string;
     recording?: { mono?: { combinedUrl?: string } };
-    messages?: any[];
+    messages?: unknown[];
     structuredOutputs?: Record<string, { name?: string; result?: unknown }>;
   };
-  messages?: any[];
+  messages?: unknown[];
 }

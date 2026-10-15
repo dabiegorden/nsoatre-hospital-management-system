@@ -70,6 +70,7 @@ import {
 import { useRouter } from "next/navigation";
 import { RiskBadge } from "@/components/risk-badge";
 import { assessRisk, type RiskInput } from "@/lib/risk";
+import { isAbortError, errorMessage } from "@/lib/utils";
 
 const riskOf = (woman: RiskInput) => {
   const { level, reasons } = assessRisk(woman);
@@ -165,6 +166,16 @@ interface FormData {
   tbTreatment: boolean;
 }
 
+/** Body of GET /api/pregnant-women (success or error). */
+interface ListResponse {
+  success?: boolean;
+  type?: string;
+  message?: string;
+  details?: unknown;
+  data?: PregnantWoman[];
+  pagination?: PaginationState;
+}
+
 interface PaginationState {
   total: number;
   page: number;
@@ -255,7 +266,7 @@ export default function PregnantWomenPage() {
         signal: abortControllerRef.current.signal,
       });
 
-      let data: any;
+      let data: ListResponse;
       try {
         data = await response.json();
       } catch {
@@ -297,13 +308,13 @@ export default function PregnantWomenPage() {
 
       setWomen(data.data || []);
       setPagination(data.pagination || pagination);
-    } catch (error: any) {
-      if (error.name === "AbortError") return;
+    } catch (error) {
+      if (isAbortError(error)) return;
 
-      if (error.message === "Failed to fetch") {
+      if (errorMessage(error) === "Failed to fetch") {
         toast.error("Network error — please check your connection.");
       } else {
-        toast.error(error.message || "An unexpected error occurred.");
+        toast.error(errorMessage(error) || "An unexpected error occurred.");
       }
     } finally {
       setLoading(false);

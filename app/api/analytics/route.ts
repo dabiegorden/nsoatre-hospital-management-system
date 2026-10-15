@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { getAnalytics } from "@/lib/analytics";
+import { errorMessage } from "@/lib/utils";
 
 // GET ?months=6 - Attendance, reminder effectiveness and call statistics
 export async function GET(request: NextRequest) {
@@ -17,10 +18,10 @@ export async function GET(request: NextRequest) {
 
   try {
     return NextResponse.json({ data: await getAnalytics(from, to) });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error computing analytics:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

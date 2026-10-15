@@ -14,6 +14,7 @@ import { useSidebar } from "./ui/sidebar";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { isAbortError } from "@/lib/utils";
 
 interface userInfo {
   name: string;
@@ -42,8 +43,8 @@ const AdminNavbar = () => {
         } else {
           toast.error("Not authenticated");
         }
-      } catch (error: any) {
-        if (error?.name === "AbortError") return;
+      } catch (error) {
+        if (isAbortError(error)) return;
         console.error("Error fetching user info:", error);
         toast.error("Error fetching user info");
       }

@@ -4,6 +4,7 @@ import { verifyToken } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { appointments, reminderLogs, users } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 export async function POST(
   request: NextRequest,
@@ -142,10 +143,10 @@ Best regards Nsoatre Hospital Antenatal Care.
         response: patientSmsResult.data,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Send SMS Reminder Error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to send SMS reminder" },
+      { message: errorMessage(error) || "Failed to send SMS reminder" },
       { status: 500 }
     );
   }

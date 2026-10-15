@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MessageSquare, Phone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/utils";
 
 interface AppointmentReminderButtonsProps {
   appointmentId: string;
@@ -66,9 +67,9 @@ export function AppointmentReminderButtons({
         `SMS sent to ${patientName} and all admins with personalized messages!`
       );
       setShowSMSDialog(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Send SMS Error:", error);
-      toast.error(error.message || "Failed to send SMS reminder");
+      toast.error(errorMessage(error) || "Failed to send SMS reminder");
     } finally {
       setSendingSMS(false);
     }
@@ -123,9 +124,9 @@ export function AppointmentReminderButtons({
       }
 
       toast.success(data.message || `Voice call started for ${patientName}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("[v0] Voice Call Error:", error);
-      toast.error(error.message || "Failed to send voice reminder");
+      toast.error(errorMessage(error) || "Failed to send voice reminder");
     } finally {
       setSendingVoice(false);
     }

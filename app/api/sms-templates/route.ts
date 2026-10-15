@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { describeDbError, toApi } from "@/lib/db-utils";
 import { validateTemplateInput } from "@/lib/reminders/template-input";
 import { smsTemplates } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 // GET - Active templates (?all=true lists inactive ones too, for admins)
 export async function GET(request: NextRequest) {
@@ -31,10 +32,10 @@ export async function GET(request: NextRequest) {
       success: true,
       data: toApi(templates),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Get SMS Templates Error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to fetch templates" },
+      { message: errorMessage(error) || "Failed to fetch templates" },
       { status: 500 }
     );
   }
@@ -62,14 +63,14 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ success: true, data: toApi(template) }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Create SMS Template Error:", error);
     const dbError = describeDbError(error);
     if (dbError) {
       return NextResponse.json({ message: dbError.message }, { status: 400 });
     }
     return NextResponse.json(
-      { message: error.message || "Failed to create template" },
+      { message: errorMessage(error) || "Failed to create template" },
       { status: 500 }
     );
   }

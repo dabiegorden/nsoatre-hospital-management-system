@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin, secretsMatch } from "@/lib/api-auth";
 import { runReminderTick } from "@/lib/reminders/engine";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * Runs one reminder pass now. Called by an external cron with
@@ -17,10 +18,10 @@ export async function POST(request: NextRequest) {
   try {
     const result = await runReminderTick();
     return NextResponse.json({ message: "Reminder tick completed", data: result });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[reminders] Manual tick failed:", error);
     return NextResponse.json(
-      { message: "Reminder tick failed", error: error.message },
+      { message: "Reminder tick failed", error: errorMessage(error) },
       { status: 500 }
     );
   }

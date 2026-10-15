@@ -22,6 +22,41 @@ export interface RiskInput {
   missedAppointments?: number;
 }
 
+/** The `pregnant_women` columns used for risk, as raw SQL (`select p.*`) returns them. */
+export type PregnantWomanRiskRow = {
+  age: number | null;
+  blood_pressure: string | null;
+  hb: string | null;
+  gestational_age: number | null;
+  expected_delivery_date: string | Date | null;
+  hiv_status_at_registration: string | null;
+  syphilis_screening_status: string | null;
+  hbs_ag_result: string | null;
+  sickling_status: string | null;
+  tb_status: string | null;
+  urine_protein: string | null;
+};
+
+export function riskInputFromRow(
+  row: PregnantWomanRiskRow,
+  missedAppointments: number
+): RiskInput {
+  return {
+    age: row.age,
+    bloodPressure: row.blood_pressure,
+    hb: row.hb,
+    gestationalAge: row.gestational_age,
+    expectedDeliveryDate: row.expected_delivery_date,
+    hivStatusAtRegistration: row.hiv_status_at_registration,
+    syphilisScreeningStatus: row.syphilis_screening_status,
+    hbsAgResult: row.hbs_ag_result,
+    sicklingStatus: row.sickling_status,
+    tbStatus: row.tb_status,
+    urineProtein: row.urine_protein,
+    missedAppointments,
+  };
+}
+
 export interface RiskAssessment {
   level: RiskLevel;
   score: number;

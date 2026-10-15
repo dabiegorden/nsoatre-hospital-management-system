@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { AutomationStatus } from "@/components/automation-status";
+import type { Appointment } from "@/models/schema";
 
 interface userInfo {
   name: string;
@@ -26,6 +27,12 @@ interface userInfo {
   email: string;
   role: string;
 }
+
+/** An appointment as /api/appointments returns it. */
+type TodayAppointment = Pick<
+  Appointment,
+  "patientName" | "notes" | "appointmentTime" | "status"
+> & { _id: string };
 
 interface DashboardStats {
   totalPregnantWomen: number;
@@ -46,7 +53,7 @@ const DashboardPage = () => {
   const [user, setUser] = useState<userInfo | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
+  const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -309,7 +316,6 @@ const DashboardPage = () => {
                         </p>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${
-                            appointment.status === "confirmed" ||
                             appointment.status === "scheduled"
                               ? "bg-emerald-100 text-emerald-700"
                               : appointment.status === "completed"

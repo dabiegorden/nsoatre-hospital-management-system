@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/api-auth";
 import { getAnalytics } from "@/lib/analytics";
 import { dangerLabel } from "@/lib/labels";
+import { errorMessage } from "@/lib/utils";
 
 function csvCell(value: unknown) {
   const text = value === null || value === undefined ? "" : String(value);
@@ -12,6 +13,21 @@ function csvCell(value: unknown) {
 
 const row = (...cells: unknown[]) => cells.map(csvCell).join(",");
 const pct = (v: number | null) => (v === null ? "n/a" : `${v}%`);
+
+/** One appointment row of the report query below. */
+type ReportRow = {
+  appointment_date_time: string | Date;
+  patient_name: string;
+  patient_phone_number: string;
+  status: string;
+  appointment_location: string;
+  folder_number: string | null;
+  calls: number;
+  reached: boolean;
+  language: string | null;
+  reason: string | null;
+  danger: string | null;
+};
 
 // GET ?month=YYYY-MM - Monthly ANC attendance & reminder report as CSV
 export async function GET(request: NextRequest) {
@@ -29,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     const [stats, appointmentRows] = await Promise.all([
       getAnalytics(from, to),
-      db.execute(sql`
+      db.execute<ReportRow>(sql`
         select a.appointment_date_time, a.patient_name, a.patient_phone_number, a.status,
                a.appointment_location, p.folder_number,
                (select count(*)::int from call_logs c where c.appointment_id = a.id and c.kind <> 'test') as calls,
@@ -84,7 +100,7 @@ export async function GET(request: NextRequest) {
         "Danger signs",
         "Reason for missing"
       ),
-      ...(appointmentRows.rows as any[]).map((a) => {
+      ...appointmentRows.rows.map((a) => {
         const when = new Date(a.appointment_date_time);
         return row(
           when.toISOString().slice(0, 10),
@@ -114,10 +130,10 @@ export async function GET(request: NextRequest) {
         "Content-Disposition": `attachment; filename="anc-report-${month}.csv"`,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating monthly report:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

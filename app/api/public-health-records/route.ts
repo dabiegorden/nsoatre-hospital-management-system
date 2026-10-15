@@ -11,6 +11,7 @@ import {
 } from "@/lib/db-utils";
 import { publicHealthRecords } from "@/models/schema";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { errorMessage } from "@/lib/utils";
 
 // GET - Fetch all public health records with pagination
 export async function GET(request: NextRequest) {
@@ -69,10 +70,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching public health records:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating public health record:", error);
 
     const dbError = describeDbError(error);
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

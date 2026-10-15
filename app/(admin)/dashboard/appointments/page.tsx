@@ -53,6 +53,7 @@ import { toast } from "sonner";
 import { formatDate, formatDateTime } from "@/lib/date-formatter";
 import { AppointmentReminderButtons } from "@/components/appointment-reminder-buttons";
 import { useDebounce } from "@/hooks/use-debounce";
+import { isAbortError, errorMessage } from "@/lib/utils";
 
 interface Appointment {
   _id: string;
@@ -158,8 +159,8 @@ export default function AppointmentsPage() {
       const data = await response.json();
       setAppointments(data.data);
       setTotal(data.pagination.total);
-    } catch (error: any) {
-      if (error.name !== "AbortError") {
+    } catch (error) {
+      if (!isAbortError(error)) {
         console.error("Error fetching appointments:", error);
         toast.error("Failed to load appointments");
       }
@@ -177,7 +178,7 @@ export default function AppointmentsPage() {
 
       const data = await response.json();
       setPregnantWomen(data.data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error fetching pregnant women:", error);
       toast.error("Failed to load pregnant women");
     }
@@ -263,9 +264,9 @@ export default function AppointmentsPage() {
       );
       handleDialogClose();
       fetchAppointments();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving appointment:", error);
-      toast.error(error.message || "Failed to save appointment");
+      toast.error(errorMessage(error) || "Failed to save appointment");
     } finally {
       setFormLoading(false);
     }
@@ -283,7 +284,7 @@ export default function AppointmentsPage() {
 
       toast.success("Appointment deleted successfully");
       fetchAppointments();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting appointment:", error);
       toast.error("Failed to delete appointment");
     }

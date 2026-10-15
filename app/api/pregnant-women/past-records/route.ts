@@ -10,6 +10,7 @@ import {
 } from "@/lib/db-utils";
 import { pastRecords, pregnantWomen } from "@/models/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { errorMessage } from "@/lib/utils";
 
 async function womanExists(id: string) {
   const [woman] = await db
@@ -70,10 +71,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching past records:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating past record:", error);
 
     const dbError = describeDbError(error);
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

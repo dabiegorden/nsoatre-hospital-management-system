@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,10 +45,10 @@ export async function POST(request: NextRequest) {
       { message: "Token verified successfully" },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Verify token error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to verify token" },
+      { message: errorMessage(error) || "Failed to verify token" },
       { status: 500 }
     );
   }

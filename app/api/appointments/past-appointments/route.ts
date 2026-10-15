@@ -5,6 +5,7 @@ import { getPagination, toApi } from "@/lib/db-utils";
 import { appointmentRelations } from "@/lib/appointments";
 import { appointments } from "@/models/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { errorMessage } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,10 +50,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching past appointments:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

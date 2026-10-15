@@ -13,12 +13,18 @@ import {
 } from "@/lib/db-utils";
 import { pregnantWomen } from "@/models/schema";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { errorMessage } from "@/lib/utils";
+
+/** The session token was present but could not be verified. */
+class AuthError extends Error {
+  name = "AuthError";
+}
 
 function createErrorResponse(
   status: number,
   type: string,
   message: string,
-  details?: any
+  details?: unknown
 ) {
   return NextResponse.json(
     {
@@ -31,15 +37,15 @@ function createErrorResponse(
   );
 }
 
-function classifyDbError(error: any): { type: string; status: number } {
-  const errorMessage = error?.message || "";
+function classifyDbError(error: unknown): { type: string; status: number } {
+  const message = errorMessage(error);
 
   // Connection / timeout errors
   if (
-    errorMessage.includes("timed out") ||
-    errorMessage.includes("ECONNREFUSED") ||
-    errorMessage.includes("fetch failed") ||
-    errorMessage.includes("Error connecting to database")
+    message.includes("timed out") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("fetch failed") ||
+    message.includes("Error connecting to database")
   ) {
     return { type: "DB_CONNECTION_ERROR", status: 503 };
   }
@@ -68,8 +74,8 @@ export async function GET(request: NextRequest) {
         "Unauthorized - No token provided"
       );
 
-    const decoded = await verifyToken(token).catch((err) => {
-      throw { name: "AuthError", message: err.message };
+    const decoded = await verifyToken(token).catch((err: unknown) => {
+      throw new AuthError(errorMessage(err));
     });
 
     if (!decoded || decoded.role !== "admin")
@@ -135,20 +141,20 @@ export async function GET(request: NextRequest) {
         },
         { status: 200 }
       );
-    } catch (queryError: any) {
+    } catch (queryError) {
       // Handle query-specific errors
       const { type, status } = classifyDbError(queryError);
       return createErrorResponse(
         status,
         type,
         "Database query failed",
-        queryError.message
+        errorMessage(queryError)
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("[API ERROR - PregnantWomen.GET]:", error);
 
-    if (error.name === "AuthError")
+    if (error instanceof AuthError)
       return createErrorResponse(401, "AUTH_ERROR", error.message);
 
     const { type, status } = classifyDbError(error);
@@ -156,7 +162,7 @@ export async function GET(request: NextRequest) {
       status,
       type,
       "Unexpected internal server error: Happened in the GET API endpoint.",
-      error.message
+      errorMessage(error)
     );
   }
 }
@@ -171,8 +177,8 @@ export async function POST(request: NextRequest) {
         "Unauthorized - No token provided"
       );
 
-    const decoded = await verifyToken(token).catch((err) => {
-      throw { name: "AuthError", message: err.message };
+    const decoded = await verifyToken(token).catch((err: unknown) => {
+      throw new AuthError(errorMessage(err));
     });
 
     if (!decoded || decoded.role !== "admin")
@@ -182,8 +188,8 @@ export async function POST(request: NextRequest) {
         "Unauthorized - Admin access required"
       );
 
-    const body = await request.json();
-    const processedBody = {
+    const body: Record<string, unknown> = await request.json();
+    const processedBody: Record<string, unknown> = {
       ...body,
       age: Number(body.age),
       height: Number(body.height),
@@ -252,10 +258,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[API ERROR - PregnantWomen.POST]:", error);
 
-    if (error.name === "AuthError")
+    if (error instanceof AuthError)
       return createErrorResponse(401, "AUTH_ERROR", error.message);
 
     const dbError = describeDbError(error);
@@ -272,7 +278,7 @@ export async function POST(request: NextRequest) {
       status,
       type,
       "Unexpected internal server error: Happened in the POST API endpoint.",
-      error.message
+      errorMessage(error)
     );
   }
 }

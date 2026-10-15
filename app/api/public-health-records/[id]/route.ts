@@ -9,6 +9,7 @@ import {
 } from "@/lib/db-utils";
 import { publicHealthRecords } from "@/models/schema";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { errorMessage } from "@/lib/utils";
 
 function findRecord(id: string) {
   return db.query.publicHealthRecords.findFirst({
@@ -56,10 +57,10 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Error fetching public health record:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -112,7 +113,7 @@ export async function PUT(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Error updating public health record:", error);
 
     const dbError = describeDbError(error);
@@ -124,7 +125,7 @@ export async function PUT(
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -172,10 +173,10 @@ export async function DELETE(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Error deleting public health record:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Login error:", error);
 
     // Don't expose internal error details to client

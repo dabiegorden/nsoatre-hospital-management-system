@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,10 +40,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Get user error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to get user" },
+      { message: errorMessage(error) || "Failed to get user" },
       { status: 500 }
     );
   }

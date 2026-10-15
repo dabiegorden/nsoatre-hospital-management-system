@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { findDefaulters } from "@/lib/defaulters";
+import { errorMessage } from "@/lib/utils";
 
 // GET - Patients who keep missing visits or could not be reached
 export async function GET(request: NextRequest) {
@@ -10,10 +11,10 @@ export async function GET(request: NextRequest) {
   try {
     const defaulters = await findDefaulters();
     return NextResponse.json({ data: defaulters });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching defaulters:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

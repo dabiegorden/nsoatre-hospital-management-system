@@ -4,6 +4,7 @@ import { verifyToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPagination, likePattern, toApi } from "@/lib/db-utils";
 import { reminderLogs } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,10 +69,10 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Get Reminders Error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to fetch reminders" },
+      { message: errorMessage(error) || "Failed to fetch reminders" },
       { status: 500 }
     );
   }

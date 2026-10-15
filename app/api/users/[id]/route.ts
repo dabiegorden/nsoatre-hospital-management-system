@@ -70,7 +70,7 @@ export async function PATCH(
       message: "User updated successfully",
       user,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Update user error:", error);
     return NextResponse.json(
       { error: "Failed to update user" },
@@ -119,7 +119,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "User deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Delete user error:", error);
     return NextResponse.json(
       { error: "Failed to delete user" },

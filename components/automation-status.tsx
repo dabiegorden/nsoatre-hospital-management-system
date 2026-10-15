@@ -5,6 +5,7 @@ import { Activity, AlertTriangle, CheckCircle2, Loader2, Phone, Play, XCircle } 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { errorMessage } from "@/lib/utils";
 
 interface Status {
   schedulerEnabled: boolean;
@@ -91,8 +92,8 @@ export function AutomationStatus({ defaultPhone = "" }: { defaultPhone?: string 
       else if (json.data.errors?.length) toast.warning("Reminder check finished with errors");
       else toast.success("Reminder check completed");
       await load();
-    } catch (error: any) {
-      toast.error(error.message || "Reminder run failed");
+    } catch (error) {
+      toast.error(errorMessage(error) || "Reminder run failed");
     } finally {
       setRunning(false);
     }
@@ -110,8 +111,8 @@ export function AutomationStatus({ defaultPhone = "" }: { defaultPhone?: string 
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
       toast.success(json.message);
-    } catch (error: any) {
-      toast.error(error.message || "Test call failed");
+    } catch (error) {
+      toast.error(errorMessage(error) || "Test call failed");
     } finally {
       setCalling(false);
     }

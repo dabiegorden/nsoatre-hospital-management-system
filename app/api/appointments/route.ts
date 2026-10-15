@@ -9,12 +9,13 @@ import {
   toApi,
 } from "@/lib/db-utils";
 import {
-  APPOINTMENT_STATUSES,
+  isAppointmentStatus,
   appointmentRelations,
   combineDateTime,
 } from "@/lib/appointments";
 import { appointments, pregnantWomen } from "@/models/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { errorMessage } from "@/lib/utils";
 
 // GET - List all appointments with pagination and filtering
 export async function GET(request: NextRequest) {
@@ -32,13 +33,8 @@ export async function GET(request: NextRequest) {
     // ✅ Build filter query
     const conditions: (SQL | undefined)[] = [];
 
-    if (APPOINTMENT_STATUSES.includes(status as any)) {
-      conditions.push(
-        eq(
-          appointments.status,
-          status as (typeof APPOINTMENT_STATUSES)[number]
-        )
-      );
+    if (isAppointmentStatus(status)) {
+      conditions.push(eq(appointments.status, status));
     }
 
     if (search) {
@@ -90,10 +86,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching appointments:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }
@@ -173,7 +169,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating appointment:", error);
 
     const dbError = describeDbError(error);
@@ -185,7 +181,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

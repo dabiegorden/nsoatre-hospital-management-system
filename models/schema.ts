@@ -608,6 +608,46 @@ export const publicHealthRecordsRelations = relations(
   })
 );
 
+// ---------------------------------------------------------------------------
+// Row types: `X` is a row read from the table, `NewX` is what an insert takes
+// ---------------------------------------------------------------------------
+
 export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
 export type PregnantWoman = typeof pregnantWomen.$inferSelect;
+export type NewPregnantWoman = typeof pregnantWomen.$inferInsert;
 export type Appointment = typeof appointments.$inferSelect;
+export type NewAppointment = typeof appointments.$inferInsert;
+export type VisitRecord = typeof visitRecords.$inferSelect;
+export type NewVisitRecord = typeof visitRecords.$inferInsert;
+export type PastRecord = typeof pastRecords.$inferSelect;
+export type NewPastRecord = typeof pastRecords.$inferInsert;
+export type PublicHealthRecord = typeof publicHealthRecords.$inferSelect;
+export type NewPublicHealthRecord = typeof publicHealthRecords.$inferInsert;
+export type ReminderLog = typeof reminderLogs.$inferSelect;
+export type NewReminderLog = typeof reminderLogs.$inferInsert;
+export type CallLog = typeof callLogs.$inferSelect;
+export type NewCallLog = typeof callLogs.$inferInsert;
+export type SchedulerLock = typeof schedulerLocks.$inferSelect;
+export type SmsTemplate = typeof smsTemplates.$inferSelect;
+export type NewSmsTemplate = typeof smsTemplates.$inferInsert;
+
+// Enum value unions, e.g. AppointmentStatus = "scheduled" | "completed" | ...
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
+export type AppointmentStatus = (typeof appointmentStatusEnum.enumValues)[number];
+export type TestResult = (typeof testResultEnum.enumValues)[number];
+export type G6pdStatus = (typeof g6pdStatusEnum.enumValues)[number];
+export type HivRetestStatus = (typeof hivRetestEnum.enumValues)[number];
+export type MaritalStatus = (typeof maritalStatusEnum.enumValues)[number];
+export type BloodGroup = (typeof bloodGroupEnum.enumValues)[number];
+export type RhFactor = (typeof rhFactorEnum.enumValues)[number];
+export type Sex = (typeof sexEnum.enumValues)[number];
+export type NutritionStatus = (typeof nutritionStatusEnum.enumValues)[number];
+export type ReminderType = (typeof reminderTypeEnum.enumValues)[number];
+export type ReminderStatus = (typeof reminderStatusEnum.enumValues)[number];
+export type SmsTemplateType = (typeof smsTemplateTypeEnum.enumValues)[number];
+export type CallLanguage = (typeof languageEnum.enumValues)[number];
+export type FollowUpStatus = (typeof followUpStatusEnum.enumValues)[number];
+export type CallProvider = (typeof callProviderEnum.enumValues)[number];
+export type CallKind = (typeof callKindEnum.enumValues)[number];
+export type CallStatus = (typeof callStatusEnum.enumValues)[number];

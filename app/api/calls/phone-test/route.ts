@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { placeTestPhoneCall } from "@/lib/calls/place-call";
 import { toE164 } from "@/lib/phone";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * POST { phoneNumber } - Places the real reminder IVR call to a staff
@@ -36,10 +37,10 @@ export async function POST(request: NextRequest) {
           : "Vapi could not place the call; the Twi voice message was sent through Arkesel instead.",
       data: result,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Phone test call failed:", error);
     return NextResponse.json(
-      { message: "Failed to place the test call", error: error.message },
+      { message: "Failed to place the test call", error: errorMessage(error) },
       { status: 500 }
     );
   }

@@ -1,32 +1,44 @@
 import { SMS_PURPOSES } from "@/lib/reminders/template-format";
-import type { smsTemplates } from "@/models/schema";
+import {
+  languageEnum,
+  smsTemplateTypeEnum,
+  type NewSmsTemplate,
+} from "@/models/schema";
 
-const TEMPLATE_TYPES = ["appointment_reminder", "missed_appointment", "general"] as const;
-const LANGUAGES = ["english", "twi"] as const;
+const TEMPLATE_TYPES = smsTemplateTypeEnum.enumValues;
+const LANGUAGES = languageEnum.enumValues;
+
+/** True when `value` is one of `options` (narrows it to that union). */
+const isOneOf = <T extends string>(options: readonly T[], value: unknown): value is T =>
+  typeof value === "string" && (options as readonly string[]).includes(value);
 
 /** Validates SMS template fields for create (partial = false) and update. */
-export function validateTemplateInput(body: any, partial: boolean) {
+export function validateTemplateInput(
+  body: Record<string, unknown>,
+  partial: boolean
+) {
   const errors: string[] = [];
-  const values: Partial<typeof smsTemplates.$inferInsert> = {};
+  const values: Partial<NewSmsTemplate> = {};
 
   for (const key of ["name", "message"] as const) {
-    if (body[key] !== undefined || !partial) {
-      const value = typeof body[key] === "string" ? body[key].trim() : "";
+    const raw = body[key];
+    if (raw !== undefined || !partial) {
+      const value = typeof raw === "string" ? raw.trim() : "";
       if (!value) errors.push(`${key} is required`);
       else values[key] = value;
     }
   }
   if (body.type !== undefined) {
-    if (!TEMPLATE_TYPES.includes(body.type)) errors.push(`type must be one of: ${TEMPLATE_TYPES.join(", ")}`);
+    if (!isOneOf(TEMPLATE_TYPES, body.type)) errors.push(`type must be one of: ${TEMPLATE_TYPES.join(", ")}`);
     else values.type = body.type;
   }
   if (body.purpose !== undefined) {
-    if (body.purpose !== null && body.purpose !== "" && !SMS_PURPOSES.includes(body.purpose)) {
-      errors.push(`purpose must be one of: ${SMS_PURPOSES.join(", ")}`);
-    } else values.purpose = body.purpose || null;
+    if (body.purpose === null || body.purpose === "") values.purpose = null;
+    else if (isOneOf(SMS_PURPOSES, body.purpose)) values.purpose = body.purpose;
+    else errors.push(`purpose must be one of: ${SMS_PURPOSES.join(", ")}`);
   }
   if (body.language !== undefined) {
-    if (!LANGUAGES.includes(body.language)) errors.push("language must be english or twi");
+    if (!isOneOf(LANGUAGES, body.language)) errors.push("language must be english or twi");
     else values.language = body.language;
   }
   if (body.isActive !== undefined) values.isActive = Boolean(body.isActive);

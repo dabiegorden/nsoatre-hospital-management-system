@@ -51,7 +51,7 @@ interface Pagination {
 }
 
 export default function RemindersPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,

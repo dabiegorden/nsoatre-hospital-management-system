@@ -16,6 +16,11 @@ export const APPOINTMENT_STATUSES = [
   "cancelled",
 ] as const;
 
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+export const isAppointmentStatus = (value: string): value is AppointmentStatus =>
+  (APPOINTMENT_STATUSES as readonly string[]).includes(value);
+
 const TIME_REGEX = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
 // Combines the appointment date with its HH:mm time.

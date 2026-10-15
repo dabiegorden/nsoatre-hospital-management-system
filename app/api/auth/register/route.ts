@@ -4,6 +4,7 @@ import { hashPassword, generateToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/db-utils";
 import { users } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "admin-secret-key";
 const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Register error:", error);
     if (isUniqueViolation(error)) {
       return NextResponse.json(
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { message: error.message || "Registration failed" },
+      { message: errorMessage(error) || "Registration failed" },
       { status: 500 }
     );
   }

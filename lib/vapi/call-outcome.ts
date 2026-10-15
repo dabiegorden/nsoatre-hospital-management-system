@@ -57,6 +57,9 @@ const SCHEMA = {
   required: ["reachedPatient", "dangerSigns", "summary"],
 };
 
+/** The fields of a Vapi structured-output record this file reads. */
+type StructuredOutputRecord = { id: string; name?: string };
+
 let cachedId: Promise<string> | null = null;
 
 /**
@@ -65,22 +68,24 @@ let cachedId: Promise<string> | null = null;
  */
 export function getCallOutcomeOutputId(): Promise<string> {
   cachedId ??= (async () => {
-    const found = await vapiRequest<any>(
+    const found = await vapiRequest<
+      StructuredOutputRecord[] | { results?: StructuredOutputRecord[] } | null
+    >(
       "GET",
       `/structured-output?name=${encodeURIComponent(CALL_OUTCOME_NAME)}&limit=10`
     );
-    const list: any[] = Array.isArray(found) ? found : (found?.results ?? []);
+    const list = Array.isArray(found) ? found : (found?.results ?? []);
     const existing = list.find((o) => o.name === CALL_OUTCOME_NAME);
-    if (existing) return existing.id as string;
+    if (existing) return existing.id;
 
-    const created = await vapiRequest<any>("POST", "/structured-output", {
+    const created = await vapiRequest<StructuredOutputRecord>("POST", "/structured-output", {
       name: CALL_OUTCOME_NAME,
       type: "ai",
       description:
         "Outcome of a missed-antenatal-appointment follow-up call: whether the patient was reached, danger signs, reason for missing, and return plan.",
       schema: SCHEMA,
     });
-    return created.id as string;
+    return created.id;
   })().catch((error) => {
     cachedId = null; // retry on the next call
     throw error;

@@ -1,7 +1,13 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { assessRisk, type RiskLevel } from "@/lib/risk";
+import {
+  assessRisk,
+  riskInputFromRow,
+  type PregnantWomanRiskRow,
+  type RiskLevel,
+} from "@/lib/risk";
+import type { FollowUpStatus } from "@/models/schema";
 
 export interface Defaulter {
   patientId: string;
@@ -17,12 +23,32 @@ export interface Defaulter {
   nextAppointmentAt: Date | null;
   riskLevel: RiskLevel;
   riskReasons: string[];
-  followUpStatus: "none" | "assigned" | "visited" | "returned";
+  followUpStatus: FollowUpStatus;
   followUpAssigneeId: string | null;
   followUpAssigneeName: string | null;
   followUpNote: string | null;
   followUpUpdatedAt: Date | null;
 }
+
+/** One row of the defaulter query below (Postgres timestamps arrive as strings). */
+type DefaulterRow = PregnantWomanRiskRow & {
+  id: string;
+  full_name: string;
+  phone_number: string;
+  residential_address: string;
+  folder_number: string;
+  expected_delivery_date: string | Date;
+  follow_up_status: FollowUpStatus;
+  follow_up_assignee_id: string | null;
+  follow_up_note: string | null;
+  follow_up_updated_at: string | Date | null;
+  consecutive: number;
+  unreachable: boolean | null;
+  last_at: string | Date | null;
+  total_misses: number;
+  next_at: string | Date | null;
+  assignee_name: string | null;
+};
 
 /**
  * Patients in an active pregnancy who have missed their last two (or more)
@@ -30,7 +56,7 @@ export interface Defaulter {
  * automatic calls. The streak is computed in SQL, so only defaulters are loaded.
  */
 export async function findDefaulters(): Promise<Defaulter[]> {
-  const { rows } = await db.execute(sql`
+  const { rows } = await db.execute<DefaulterRow>(sql`
     with past as (
       select a.patient_id, a.status, a.escalated_at, a.appointment_date_time,
              row_number() over (partition by a.patient_id order by a.appointment_date_time desc) as rn
@@ -62,22 +88,9 @@ export async function findDefaulters(): Promise<Defaulter[]> {
 
   const riskOrder: Record<RiskLevel, number> = { high: 0, moderate: 1, low: 2 };
 
-  return (rows as any[])
+  return rows
     .map((p): Defaulter => {
-      const risk = assessRisk({
-        age: p.age,
-        bloodPressure: p.blood_pressure,
-        hb: p.hb,
-        gestationalAge: p.gestational_age,
-        expectedDeliveryDate: p.expected_delivery_date,
-        hivStatusAtRegistration: p.hiv_status_at_registration,
-        syphilisScreeningStatus: p.syphilis_screening_status,
-        hbsAgResult: p.hbs_ag_result,
-        sicklingStatus: p.sickling_status,
-        tbStatus: p.tb_status,
-        urineProtein: p.urine_protein,
-        missedAppointments: p.total_misses,
-      });
+      const risk = assessRisk(riskInputFromRow(p, p.total_misses));
       return {
         patientId: p.id,
         fullName: p.full_name,

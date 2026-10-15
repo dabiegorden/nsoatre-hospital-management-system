@@ -12,8 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { errorMessage } from "@/lib/utils";
 
 type Phase = "idle" | "connecting" | "live" | "ended";
+
+/** The fields of a Vapi web "message" event used for the live transcript. */
+interface TranscriptMessage {
+  type?: string;
+  transcriptType?: string;
+  role?: string;
+  transcript?: string;
+}
 
 interface Line {
   role: "assistant" | "user";
@@ -73,11 +82,16 @@ export function IvrTestCall({
       vapi.on("call-start", () => setPhase("live"));
       vapi.on("speech-start", () => setAssistantSpeaking(true));
       vapi.on("speech-end", () => setAssistantSpeaking(false));
-      vapi.on("message", (message: any) => {
-        if (message?.type === "transcript" && message.transcriptType === "final") {
+      vapi.on("message", (message: TranscriptMessage) => {
+        if (
+          message?.type === "transcript" &&
+          message.transcriptType === "final" &&
+          message.transcript
+        ) {
+          const text = message.transcript;
           setLines((prev) => [
             ...prev,
-            { role: message.role === "user" ? "user" : "assistant", text: message.transcript },
+            { role: message.role === "user" ? "user" : "assistant", text },
           ]);
         }
       });
@@ -87,9 +101,14 @@ export function IvrTestCall({
         toast.success("Test call ended. The outcome will appear in Call history shortly.");
         onFinished?.();
       });
-      vapi.on("error", (error: any) => {
+      vapi.on("error", (error: unknown) => {
         console.error("Vapi web call error:", error);
-        toast.error(error?.error?.message || error?.message || "Call error");
+        // The SDK usually wraps the real error as `{ error: { message } }`.
+        const inner =
+          error && typeof error === "object" && "error" in error
+            ? errorMessage(error.error)
+            : "";
+        toast.error(inner || errorMessage(error) || "Call error");
       });
 
       const call = await vapi.start(undefined, undefined, squad);
@@ -98,9 +117,9 @@ export function IvrTestCall({
         await patchLog({ failed: "Browser call did not start" });
         setPhase("idle");
       }
-    } catch (error: any) {
-      await patchLog({ failed: error.message });
-      toast.error(error.message || "Failed to start the test call");
+    } catch (error) {
+      await patchLog({ failed: errorMessage(error) });
+      toast.error(errorMessage(error) || "Failed to start the test call");
       setPhase("idle");
     }
   };

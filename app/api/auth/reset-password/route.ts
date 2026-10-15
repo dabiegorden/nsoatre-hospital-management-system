@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,10 +59,10 @@ export async function POST(request: NextRequest) {
       { message: "Password reset successful" },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[v0] Reset password error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to reset password" },
+      { message: errorMessage(error) || "Failed to reset password" },
       { status: 500 }
     );
   }

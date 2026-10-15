@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/api-auth";
 import { getPagination, likePattern, toApi } from "@/lib/db-utils";
 import { callLogs } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 // GET - Call history with outcomes (filters: search, appointmentId, patientId, danger=true)
 export async function GET(request: NextRequest) {
@@ -77,10 +78,10 @@ export async function GET(request: NextRequest) {
       data: toApi(rows),
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching call logs:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage(error) },
       { status: 500 }
     );
   }

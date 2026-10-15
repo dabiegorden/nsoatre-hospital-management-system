@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/models/schema";
 import PasswordResetEmail from "@/components/emails/password-reset-email";
+import { errorMessage } from "@/lib/utils";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -64,10 +65,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Forgot password error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to send reset code" },
+      { message: errorMessage(error) || "Failed to send reset code" },
       { status: 500 }
     );
   }

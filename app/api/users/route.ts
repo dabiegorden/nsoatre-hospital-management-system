@@ -35,7 +35,7 @@ export async function GET() {
       .orderBy(desc(users.createdAt));
 
     return NextResponse.json({ users: formattedUsers });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Get users error:", error);
     return NextResponse.json(
       { error: "Failed to fetch users" },
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Create user error:", error);
 
     if (isUniqueViolation(error)) {

@@ -4,6 +4,7 @@ import { verifyToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { placeReminderCall } from "@/lib/calls/place-call";
 import { appointments } from "@/models/schema";
+import { errorMessage } from "@/lib/utils";
 
 // POST - Manually place the reminder IVR call (Twi/English) for an appointment
 export async function POST(
@@ -70,10 +71,10 @@ export async function POST(
         patientPhone: appointment.patientPhoneNumber,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Send Voice Reminder Error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to send voice reminder" },
+      { message: errorMessage(error) || "Failed to send voice reminder" },
       { status: 500 }
     );
   }
