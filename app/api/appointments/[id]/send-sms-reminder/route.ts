@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { arkeselService } from "@/lib/arkesel-service";
-import { verifyToken } from "@/lib/auth";
+import { requireStaff } from "@/lib/api-auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { appointments, reminderLogs, users } from "@/models/schema";
@@ -11,14 +11,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // --- Authentication ---
-    const token = request.cookies.get("auth-token")?.value;
-    if (!token)
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const decoded = await verifyToken(token); // ✅ FIXED
-    if (!decoded)
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     // --- Extract request data ---
     const { id } = await params;

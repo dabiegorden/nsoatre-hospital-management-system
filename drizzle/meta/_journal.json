@@ -50,6 +50,13 @@
       "when": 1791735183789,
       "tag": "0006_sms_template_language",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792150973786,
+      "tag": "0007_roles_admin_staff",
+      "breakpoints": true
     }
   ]
 }

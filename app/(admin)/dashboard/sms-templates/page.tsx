@@ -32,6 +32,8 @@ import {
   type SmsPurpose,
 } from "@/lib/reminders/template-format";
 import { errorMessage } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canDelete } from "@/lib/roles";
 
 interface Template {
   _id: string;
@@ -55,6 +57,9 @@ const PREVIEW_VARS = {
 };
 
 export default function SmsTemplatesPage() {
+  // Deleting is admin-only; staff can add and edit.
+  const canDeleteRecords = canDelete(useCurrentUser()?.role);
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Template | null>(null);
@@ -225,9 +230,11 @@ export default function SmsTemplatesPage() {
                       <Button variant="outline" size="sm" onClick={() => openForm(t)} aria-label="Edit">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => remove(t)} aria-label="Delete">
-                        <Trash2 className="w-4 h-4 text-rose-600" />
-                      </Button>
+                      {canDeleteRecords && (
+                        <Button variant="outline" size="sm" onClick={() => remove(t)} aria-label="Delete">
+                          <Trash2 className="w-4 h-4 text-rose-600" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{t.message}</p>

@@ -8,7 +8,7 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { pregnantWomen, visitRecords } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
@@ -55,7 +55,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;

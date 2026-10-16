@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
+import type { Role } from "@/lib/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -14,7 +15,7 @@ export interface TokenPayload {
   email: string;
   name: string;
   phoneNumber?: string;
-  role: string;
+  role: Role;
 }
 
 // Hash password

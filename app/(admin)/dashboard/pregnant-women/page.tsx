@@ -71,6 +71,8 @@ import { useRouter } from "next/navigation";
 import { RiskBadge } from "@/components/risk-badge";
 import { assessRisk, type RiskInput } from "@/lib/risk";
 import { isAbortError, errorMessage } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canDelete } from "@/lib/roles";
 
 const riskOf = (woman: RiskInput) => {
   const { level, reasons } = assessRisk(woman);
@@ -224,6 +226,9 @@ const initialFormData: FormData = {
 };
 
 export default function PregnantWomenPage() {
+  // Deleting is admin-only; staff can add and edit.
+  const canDeleteRecords = canDelete(useCurrentUser()?.role);
+
   const [women, setWomen] = useState<PregnantWoman[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1709,14 +1714,16 @@ export default function PregnantWomenPage() {
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openDeleteDialog(woman._id)}
-                                className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {canDeleteRecords && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openDeleteDialog(woman._id)}
+                                  className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1827,15 +1834,17 @@ export default function PregnantWomenPage() {
                             <Pencil className="w-3 h-3 mr-1" />
                             Edit
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openDeleteDialog(woman._id)}
-                            className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Delete
-                          </Button>
+                          {canDeleteRecords && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDeleteDialog(woman._id)}
+                              className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>

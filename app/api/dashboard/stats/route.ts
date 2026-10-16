@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import {
   appointments,
   callLogs,
@@ -16,7 +16,7 @@ import { errorMessage } from "@/lib/utils";
 // GET - Fetch dashboard statistics
 export async function GET(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const today = new Date();

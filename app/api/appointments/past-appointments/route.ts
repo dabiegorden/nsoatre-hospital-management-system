@@ -4,12 +4,12 @@ import { db } from "@/lib/db";
 import { getPagination, toApi } from "@/lib/db-utils";
 import { appointmentRelations } from "@/lib/appointments";
 import { appointments } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const searchParams = request.nextUrl.searchParams;

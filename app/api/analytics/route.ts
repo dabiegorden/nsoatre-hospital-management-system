@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { getAnalytics } from "@/lib/analytics";
 import { errorMessage } from "@/lib/utils";
 
 // GET ?months=6 - Attendance, reminder effectiveness and call statistics
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const months = Math.min(
     24,

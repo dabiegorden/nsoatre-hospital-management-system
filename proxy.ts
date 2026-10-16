@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/auth";
+import { canManageUsers, isRole } from "./lib/roles";
 
 export default async function Proxy(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
@@ -18,19 +19,21 @@ export default async function Proxy(request: NextRequest) {
     // Await the async jose verifier
     const payload = await verifyToken(token);
 
-    if (!payload) {
+    // Tokens from before the admin/staff roles (role "user") must log in again.
+    if (!payload || !isRole(payload.role)) {
       console.log("[Proxy] Invalid token");
       const response = NextResponse.redirect(new URL("/", request.url));
       response.cookies.delete("auth-token");
       return response;
     }
 
-    if (payload.role !== "admin") {
-      console.log("[Proxy] Not admin, redirecting...");
-      return NextResponse.redirect(new URL("/", request.url));
+    // User management is admin-only; staff go back to the dashboard.
+    if (path.startsWith("/dashboard/users") && !canManageUsers(payload.role)) {
+      console.log("[Proxy] Staff cannot manage users, redirecting...");
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
-    console.log("[Proxy] ✅ Access granted for admin");
+    console.log(`[Proxy] ✅ Access granted for ${payload.role}`);
   }
 
   return NextResponse.next();

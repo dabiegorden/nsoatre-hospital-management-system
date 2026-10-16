@@ -12,13 +12,8 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { pregnantWomen } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
-
-/** The session token was present but could not be verified. */
-class AuthError extends Error {
-  name = "AuthError";
-}
 
 function createErrorResponse(
   status: number,
@@ -35,6 +30,14 @@ function createErrorResponse(
     },
     { status }
   );
+}
+
+/** requireStaff, with failures in this route's { type: "AUTH_ERROR" } shape. */
+async function authorize(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!(auth instanceof NextResponse)) return auth;
+  const { message } = (await auth.json()) as { message: string };
+  return createErrorResponse(auth.status, "AUTH_ERROR", message);
 }
 
 function classifyDbError(error: unknown): { type: string; status: number } {
@@ -66,24 +69,8 @@ const isTestResult = (v: string): v is TestResult =>
 
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token)
-      return createErrorResponse(
-        401,
-        "AUTH_ERROR",
-        "Unauthorized - No token provided"
-      );
-
-    const decoded = await verifyToken(token).catch((err: unknown) => {
-      throw new AuthError(errorMessage(err));
-    });
-
-    if (!decoded || decoded.role !== "admin")
-      return createErrorResponse(
-        403,
-        "AUTH_ERROR",
-        "Unauthorized - Admin access required"
-      );
+    const decoded = await authorize(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, offset } = getPagination(searchParams);
@@ -154,9 +141,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[API ERROR - PregnantWomen.GET]:", error);
 
-    if (error instanceof AuthError)
-      return createErrorResponse(401, "AUTH_ERROR", error.message);
-
     const { type, status } = classifyDbError(error);
     return createErrorResponse(
       status,
@@ -169,24 +153,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token)
-      return createErrorResponse(
-        401,
-        "AUTH_ERROR",
-        "Unauthorized - No token provided"
-      );
-
-    const decoded = await verifyToken(token).catch((err: unknown) => {
-      throw new AuthError(errorMessage(err));
-    });
-
-    if (!decoded || decoded.role !== "admin")
-      return createErrorResponse(
-        403,
-        "AUTH_ERROR",
-        "Unauthorized - Admin access required"
-      );
+    const decoded = await authorize(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const body: Record<string, unknown> = await request.json();
     const processedBody: Record<string, unknown> = {
@@ -260,9 +228,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("[API ERROR - PregnantWomen.POST]:", error);
-
-    if (error instanceof AuthError)
-      return createErrorResponse(401, "AUTH_ERROR", error.message);
 
     const dbError = describeDbError(error);
     if (dbError)

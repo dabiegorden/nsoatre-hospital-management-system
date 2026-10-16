@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { placeTestPhoneCall } from "@/lib/calls/place-call";
 import { toE164 } from "@/lib/phone";
 import { errorMessage } from "@/lib/utils";
@@ -10,8 +10,8 @@ import { errorMessage } from "@/lib/utils";
  * Logged as a test call: it never changes patient records or alerts staff.
  */
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const { phoneNumber } = await request.json().catch(() => ({}));
   if (!toE164(phoneNumber)) {
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
   try {
     const result = await placeTestPhoneCall({
       phone: phoneNumber,
-      name: admin.name,
-      initiatedBy: { name: admin.name, email: admin.email },
+      name: caller.name,
+      initiatedBy: { name: caller.name, email: caller.email },
     });
     if (!result.success) {
       return NextResponse.json(

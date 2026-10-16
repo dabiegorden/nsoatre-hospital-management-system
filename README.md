@@ -123,7 +123,7 @@ external cron can `POST /api/reminders/tick` with `Authorization: Bearer $CRON_S
 
 | Path | Purpose |
 |---|---|
-| `models/schema.ts` | Drizzle schema (all tables) |
+| `models/schema/` | Drizzle schema, one file per table (`index.ts` re-exports all) |
 | `drizzle/` | SQL migrations |
 | `lib/reminders/` | Engine, scheduler, timings, SMS texts |
 | `lib/calls/` | Placing calls (Vapi → Arkesel fallback) and processing outcomes |

@@ -10,27 +10,14 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { publicHealthRecords } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 // GET - Fetch all public health records with pagination
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || (decoded.role !== "admin" && decoded.role !== "viewer")) {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin or Viewer access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, offset } = getPagination(searchParams);
@@ -82,21 +69,8 @@ export async function GET(request: NextRequest) {
 // POST - Create a new public health record
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Forbidden - Only admin users can create records" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const body = await request.json();
     const values = pickInput(publicHealthRecords, body, ["recordedById"]);

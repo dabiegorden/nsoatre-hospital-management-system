@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { getAnalytics } from "@/lib/analytics";
 import { dangerLabel } from "@/lib/labels";
 import { errorMessage } from "@/lib/utils";
@@ -31,8 +31,8 @@ type ReportRow = {
 
 // GET ?month=YYYY-MM - Monthly ANC attendance & reminder report as CSV
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const month = request.nextUrl.searchParams.get("month") ?? "";
   const match = /^(\d{4})-(\d{2})$/.exec(month);
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     const lines = [
       row(`Nsoatre Government Hospital - Antenatal Care Monthly Report (${month})`),
-      row("Generated", new Date().toISOString(), "By", admin.name),
+      row("Generated", new Date().toISOString(), "By", caller.name),
       "",
       row("Indicator", "Value"),
       row("Visits attended", stats.totals.completed),

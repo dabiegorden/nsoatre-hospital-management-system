@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { twiAudioUrl, vapiServerConfig } from "@/lib/calls/place-call";
 import { reminderConfig } from "@/lib/reminders/config";
 import { isDryRun } from "@/lib/reminders/dry-run";
@@ -11,8 +11,8 @@ import { schedulerLocks } from "@/models/schema";
 
 // GET - Health of the automatic reminder system, for the dashboard.
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const [lock] = await db
     .select()

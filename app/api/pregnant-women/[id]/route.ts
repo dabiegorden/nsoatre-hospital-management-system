@@ -9,7 +9,7 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { pastRecords, pregnantWomen } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireAdmin, requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 // GET - Fetch a single pregnant woman record
@@ -18,7 +18,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params; // ✅ Await params (Next.js 15/16)
@@ -65,7 +65,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params; // ✅ Await params

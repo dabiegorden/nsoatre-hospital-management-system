@@ -1,18 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAdmin, secretsMatch } from "@/lib/api-auth";
+import { requireStaff, secretsMatch } from "@/lib/api-auth";
 import { runReminderTick } from "@/lib/reminders/engine";
 import { errorMessage } from "@/lib/utils";
 
 /**
  * Runs one reminder pass now. Called by an external cron with
- * `Authorization: Bearer $CRON_SECRET`, or by an admin from the dashboard.
+ * `Authorization: Bearer $CRON_SECRET`, or by signed-in staff from the dashboard.
  * The in-app scheduler normally makes this unnecessary.
  */
 export async function POST(request: NextRequest) {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!secretsMatch(bearer, process.env.CRON_SECRET)) {
-    const admin = await requireAdmin(request);
-    if (admin instanceof NextResponse) return admin;
+    const caller = await requireStaff(request);
+    if (caller instanceof NextResponse) return caller;
   }
 
   try {

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { buildSquadForAppointment } from "@/lib/calls/place-call";
 import { appointments, callLogs } from "@/models/schema";
 import { errorMessage } from "@/lib/utils";
@@ -13,8 +13,8 @@ import { errorMessage } from "@/lib/utils";
  * The test is logged; register the Vapi call id afterwards via PATCH.
  */
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const publicKey = process.env.VAPI_PUBLIC_API_KEY;
   if (!publicKey) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         provider: "vapi",
         kind: "test",
         language,
-        initiatedBy: { name: admin.name, email: admin.email },
+        initiatedBy: { name: caller.name, email: caller.email },
       })
       .returning({ id: callLogs.id });
 

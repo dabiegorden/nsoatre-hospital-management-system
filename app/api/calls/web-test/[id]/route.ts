@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { callLogs } from "@/models/schema";
 
 // PATCH { vapiCallId } - Links a started browser test call to its log so its
@@ -10,8 +10,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   const { id } = await params;
   const { vapiCallId, failed } = await request.json().catch(() => ({}));

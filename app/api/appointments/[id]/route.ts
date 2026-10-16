@@ -6,7 +6,7 @@ import { appointmentRelations, combineDateTime } from "@/lib/appointments";
 import { bookNextAncContact } from "@/lib/anc-booking";
 import { reminderConfig } from "@/lib/reminders/config";
 import { appointments, type Appointment } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireAdmin, requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 // Fields managed by the system that clients may not set directly.
@@ -49,7 +49,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;
@@ -88,7 +88,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;

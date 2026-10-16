@@ -33,6 +33,7 @@ export const AdminSidebarMenu = [
     title: "Users",
     href: "/dashboard/users",
     icon: User2,
+    adminOnly: true, // hidden from staff
   },
   {
     id: 3,

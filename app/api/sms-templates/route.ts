@@ -1,27 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
-import { verifyToken } from "@/lib/auth";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { describeDbError, toApi } from "@/lib/db-utils";
 import { validateTemplateInput } from "@/lib/reminders/template-input";
 import { smsTemplates } from "@/models/schema";
 import { errorMessage } from "@/lib/utils";
 
-// GET - Active templates (?all=true lists inactive ones too, for admins)
+// GET - Active templates (?all=true lists inactive ones too)
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth-token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-
-    const all = request.nextUrl.searchParams.get("all") === "true" && decoded.role === "admin";
+    const all = request.nextUrl.searchParams.get("all") === "true";
     const templates = await db
       .select()
       .from(smsTemplates)
@@ -41,10 +33,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a template (admins)
+// POST - Create a template
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   try {
     const body = await request.json();
@@ -58,7 +50,7 @@ export async function POST(request: NextRequest) {
       .values({
         ...(values as typeof smsTemplates.$inferInsert),
         type: values.type ?? "general",
-        createdBy: { name: admin.name, email: admin.email },
+        createdBy: { name: caller.name, email: caller.email },
       })
       .returning();
 

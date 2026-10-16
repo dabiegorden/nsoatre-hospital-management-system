@@ -1,15 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, ilike, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { getPagination, likePattern, toApi } from "@/lib/db-utils";
 import { callLogs } from "@/models/schema";
 import { errorMessage } from "@/lib/utils";
 
 // GET - Call history with outcomes (filters: search, appointmentId, patientId, danger=true)
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   try {
     const searchParams = request.nextUrl.searchParams;

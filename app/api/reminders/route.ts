@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
-import { verifyToken } from "@/lib/auth";
+import { requireStaff } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { getPagination, likePattern, toApi } from "@/lib/db-utils";
 import { reminderLogs } from "@/models/schema";
@@ -8,15 +8,8 @@ import { errorMessage } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth-token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";

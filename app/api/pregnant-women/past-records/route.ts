@@ -9,7 +9,7 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { pastRecords, pregnantWomen } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 async function womanExists(id: string) {
@@ -23,7 +23,7 @@ async function womanExists(id: string) {
 // GET - Fetch past records for a pregnant woman
 export async function GET(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const searchParams = request.nextUrl.searchParams;
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 // POST - Create a new past record
 export async function POST(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const body = await request.json();

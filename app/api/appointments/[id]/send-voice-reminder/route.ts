@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { verifyToken } from "@/lib/auth";
+import { requireStaff } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { placeReminderCall } from "@/lib/calls/place-call";
 import { appointments } from "@/models/schema";
@@ -12,21 +12,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = request.cookies.get("auth-token")?.value;
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No authentication token found" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { message: "Unauthorized - Invalid or expired token" },
-        { status: 401 }
-      );
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await params;
     const [appointment] = await db

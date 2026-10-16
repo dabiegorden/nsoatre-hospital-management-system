@@ -32,13 +32,8 @@ import {
   Filter,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "viewer" | "user";
-}
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canDelete } from "@/lib/roles";
 
 interface PublicHealthRecord {
   _id: string;
@@ -75,22 +70,7 @@ export default function PublicHealthRecordsPage() {
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setCurrentUser(result.user);
-      }
-    } catch (err) {
-      console.error("Failed to fetch current user:", err);
-    }
-  };
+  const currentUser = useCurrentUser();
 
   const fetchRecords = async (page = 1, searchQuery = "") => {
     try {
@@ -146,7 +126,6 @@ export default function PublicHealthRecordsPage() {
   };
 
   useEffect(() => {
-    fetchCurrentUser();
     fetchRecords(1, "");
   }, []);
 
@@ -159,7 +138,7 @@ export default function PublicHealthRecordsPage() {
     fetchRecords(newPage, search);
   };
 
-  const isAdmin = currentUser?.role === "admin";
+  const canDeleteRecords = canDelete(currentUser?.role);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-slate-100">
@@ -175,14 +154,12 @@ export default function PublicHealthRecordsPage() {
                 Manage and track child welfare and health records
               </p>
             </div>
-            {isAdmin && (
-              <Link href="/dashboard/public-health-records/create">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add New Record
-                </Button>
-              </Link>
-            )}
+            <Link href="/dashboard/public-health-records/create">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Record
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -391,30 +368,28 @@ export default function PublicHealthRecordsPage() {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </Link>
-                            {isAdmin && (
-                              <>
-                                <Link
-                                  href={`/dashboard/public-health-records/${record._id}/edit`}
-                                >
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-9 w-9 p-0 hover:bg-emerald-50 hover:text-emerald-600"
-                                    title="Edit Record"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                </Link>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Delete Record"
-                                  onClick={() => setDeleteId(record._id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
+                            <Link
+                              href={`/dashboard/public-health-records/${record._id}/edit`}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 w-9 p-0 hover:bg-emerald-50 hover:text-emerald-600"
+                                title="Edit Record"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            {canDeleteRecords && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete Record"
+                                onClick={() => setDeleteId(record._id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         </TableCell>

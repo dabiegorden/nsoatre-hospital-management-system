@@ -20,6 +20,7 @@ import Image from "next/image";
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 import { AdminSidebarMenu } from "@/constants";
+import { canManageUsers } from "@/lib/roles";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -158,7 +159,9 @@ const AdminSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-0.5 md:space-y-1 px-2">
-              {AdminSidebarMenu.map((item) => {
+              {AdminSidebarMenu.filter(
+                (item) => !("adminOnly" in item) || canManageUsers(user?.role)
+              ).map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <SidebarMenuItem key={item.id}>

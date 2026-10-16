@@ -30,6 +30,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canDelete } from "@/lib/roles";
 
 interface PublicHealthRecord {
   _id: string;
@@ -71,6 +73,9 @@ interface PublicHealthRecord {
 }
 
 export default function PublicHealthRecordDetailsPage() {
+  // Deleting is admin-only; staff can add and edit.
+  const canDeleteRecords = canDelete(useCurrentUser()?.role);
+
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -203,15 +208,17 @@ export default function PublicHealthRecordDetailsPage() {
                 Edit
               </Button>
             </Link>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300 gap-2"
-              onClick={() => setDeleteId(id)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
+            {canDeleteRecords && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300 gap-2"
+                onClick={() => setDeleteId(id)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 

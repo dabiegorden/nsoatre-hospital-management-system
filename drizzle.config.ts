@@ -7,7 +7,7 @@ if (!DATABASE_URL) {
 }
 
 export default defineConfig({
-  schema: "./models/schema.ts", // Your schema file path
+  schema: "./models/schema/index.ts", // one file per table, re-exported here
   out: "./drizzle", // Your migrations folder
   dialect: "postgresql",
   casing: "snake_case",

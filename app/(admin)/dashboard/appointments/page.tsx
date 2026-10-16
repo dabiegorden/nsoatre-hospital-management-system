@@ -54,6 +54,8 @@ import { formatDate, formatDateTime } from "@/lib/date-formatter";
 import { AppointmentReminderButtons } from "@/components/appointment-reminder-buttons";
 import { useDebounce } from "@/hooks/use-debounce";
 import { isAbortError, errorMessage } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canDelete } from "@/lib/roles";
 
 interface Appointment {
   _id: string;
@@ -99,6 +101,9 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AppointmentsPage() {
+  // Deleting is admin-only; staff can add and edit.
+  const canDeleteRecords = canDelete(useCurrentUser()?.role);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -667,15 +672,17 @@ export default function AppointmentsPage() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(appointment._id)}
-                                  title="Delete appointment"
-                                  className="hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </Button>
+                                {canDeleteRecords && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(appointment._id)}
+                                    title="Delete appointment"
+                                    className="hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -823,15 +830,17 @@ export default function AppointmentsPage() {
                               <Edit2 className="w-4 h-4 mr-2" />
                               Edit
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDelete(appointment._id)}
-                              className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </Button>
+                            {canDeleteRecords && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(appointment._id)}
+                                className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>

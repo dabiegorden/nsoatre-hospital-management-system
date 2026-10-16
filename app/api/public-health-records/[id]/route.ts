@@ -8,7 +8,7 @@ import {
   userSummary,
 } from "@/lib/db-utils";
 import { publicHealthRecords } from "@/models/schema";
-import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { requireAdmin, requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 function findRecord(id: string) {
@@ -23,21 +23,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || (decoded.role !== "admin" && decoded.role !== "viewer")) {
-      return NextResponse.json(
-        { message: "Unauthorized - Admin or Viewer access required" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
 
@@ -71,21 +58,8 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Forbidden - Only admin users can update records" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireStaff(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
     const body = await request.json();
@@ -136,21 +110,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.role !== "admin") {
-      return NextResponse.json(
-        { message: "Forbidden - Only admin users can delete records" },
-        { status: 403 }
-      );
-    }
+    const decoded = await requireAdmin(request);
+    if (decoded instanceof NextResponse) return decoded;
 
     const { id } = await context.params;
 

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireAdmin, requireStaff } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { describeDbError, toApi } from "@/lib/db-utils";
 import { validateTemplateInput } from "@/lib/reminders/template-input";
@@ -11,8 +11,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const caller = await requireStaff(request);
+  if (caller instanceof NextResponse) return caller;
 
   try {
     const { id } = await params;

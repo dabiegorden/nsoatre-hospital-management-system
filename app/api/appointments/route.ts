@@ -14,13 +14,13 @@ import {
   combineDateTime,
 } from "@/lib/appointments";
 import { appointments, pregnantWomen } from "@/models/schema";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { errorMessage } from "@/lib/utils";
 
 // GET - List all appointments with pagination and filtering
 export async function GET(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     // ✅ Get query parameters for pagination and filtering
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new appointment
 export async function POST(request: NextRequest) {
   try {
-    const decoded = await requireAdmin(request);
+    const decoded = await requireStaff(request);
     if (decoded instanceof NextResponse) return decoded;
 
     const body = await request.json();

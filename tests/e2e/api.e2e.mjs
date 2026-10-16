@@ -37,8 +37,14 @@ try {
   check("register admin", r.status === 201 && cookie, r);
   const myId = r.data?.user?.id;
 
-  r = await call("POST", "/api/auth/register", { email: email.toUpperCase(), password: "password123", name: "x", phoneNumber: "1" });
+  r = await call("POST", "/api/auth/register", { email: email.toUpperCase(), password: "password123", name: "x", phoneNumber: "1", secretKey: process.env.ADMIN_SECRET_KEY });
   check("duplicate email (case-insensitive) -> 409", r.status === 409, r);
+  {
+    const saved = cookie;
+    r = await call("POST", "/api/auth/register", { email: `e2e.nokey.${stamp}@example.com`, password: "password123", name: "x", phoneNumber: "0240000009" });
+    check("register without admin secret key -> 401", r.status === 401, r);
+    cookie = saved;
+  }
 
   r = await call("GET", "/api/auth/me");
   check("me", r.status === 200 && r.data.user.id === myId, r);
@@ -200,9 +206,53 @@ try {
   // Users
   r = await call("GET", "/api/users");
   check("list users", r.status === 200 && r.data.users.some((u) => u.id === myId && !("password" in u)), r);
-  r = await call("POST", "/api/users", { email: `E2E.other.${stamp}@Example.com`, password: "secret12", name: "Other", phoneNumber: "1" });
-  check("create user (email lowercased)", r.status === 201 && r.data.user.email === `e2e.other.${stamp}@example.com`, r);
+  r = await call("POST", "/api/users", { email: `E2E.other.${stamp}@Example.com`, password: "secret12", name: "Other", phoneNumber: "0244000001" });
+  check("create user defaults to staff (email lowercased)", r.status === 201 && r.data.user.email === `e2e.other.${stamp}@example.com` && r.data.user.role === "staff", r);
   cleanup.otherUserId = r.data?.user?.id;
+  r = await call("POST", "/api/users", { email: `e2e.bad.${stamp}@example.com`, password: "secret12", name: "Bad", phoneNumber: "0244000002", role: "user" });
+  check("create user with unknown role -> 400", r.status === 400, r);
+  r = await call("PATCH", `/api/users/${myId}`, { role: "staff" });
+  check("admin cannot demote self -> 400", r.status === 400, r);
+
+  // Staff: can view, add and edit, but cannot delete or manage users
+  {
+    const adminCookie = cookie;
+    const staffEmail = `e2e.staff.${stamp}@example.com`;
+    r = await call("POST", "/api/users", { email: staffEmail, password: "staffpass1", name: "E2E Staff", phoneNumber: "0244000003", role: "staff" });
+    check("admin creates staff", r.status === 201 && r.data.user.role === "staff", r);
+    const staffId = r.data?.user?.id;
+
+    cookie = "";
+    r = await call("POST", "/api/auth/login", { email: staffEmail, password: "staffpass1" });
+    check("staff can log in", r.status === 200 && r.data.user.role === "staff" && cookie, r);
+    r = await call("GET", "/api/pregnant-women?limit=1");
+    check("staff can list pregnant women", r.status === 200, r);
+    r = await call("PUT", `/api/pregnant-women/${womanId}`, { ...woman, weight: 63 });
+    check("staff can edit pregnant woman", r.status === 200 && r.data.data.weight === 63, r);
+    r = await call("POST", "/api/public-health-records", { ...phr, registrationNumber: `R-staff-${stamp}` });
+    check("staff can add public health record", r.status === 201, r);
+    const staffPhrId = r.data?.data?._id;
+    r = await call("DELETE", `/api/public-health-records/${staffPhrId}`);
+    check("staff cannot delete public health record -> 403", r.status === 403, r);
+    r = await call("DELETE", `/api/pregnant-women/${womanId}`);
+    check("staff cannot delete pregnant woman -> 403", r.status === 403, r);
+    r = await call("DELETE", `/api/appointments/${apptId}`);
+    check("staff cannot delete appointment -> 403", r.status === 403, r);
+    r = await call("GET", "/api/users");
+    check("staff cannot list users -> 403", r.status === 403, r);
+    r = await call("POST", "/api/users", { email: `e2e.sneaky.${stamp}@example.com`, password: "password123", name: "x", phoneNumber: "0244000004", role: "admin" });
+    check("staff cannot create users -> 403", r.status === 403, r);
+    r = await call("PATCH", `/api/users/${staffId}`, { role: "admin" });
+    check("staff cannot promote self -> 403", r.status === 403, r);
+
+    cookie = adminCookie;
+    r = await call("DELETE", `/api/public-health-records/${staffPhrId}`);
+    check("admin deletes staff-created record", r.status === 200, r);
+    r = await call("PATCH", `/api/users/${staffId}`, { role: "admin" });
+    check("admin promotes staff to admin", r.status === 200 && r.data.user.role === "admin", r);
+    r = await call("DELETE", `/api/users/${staffId}`);
+    check("admin deletes user", r.status === 200, r);
+  }
   r = await call("PATCH", `/api/users/${cleanup.otherUserId}`, { role: "admin" });
   check("patch user role", r.status === 200 && r.data.user.role === "admin", r);
   r = await call("DELETE", `/api/users/${cleanup.otherUserId}`);
@@ -243,6 +293,7 @@ const sql = neon(process.env.DATABASE_URL);
 if (cleanup.apptId) await sql`delete from appointments where id = ${cleanup.apptId}`;
 if (cleanup.womanId) await sql`delete from pregnant_women where id = ${cleanup.womanId}`;
 if (cleanup.phrId) await sql`delete from public_health_records where id = ${cleanup.phrId}`;
+await sql`delete from public_health_records where registration_number = ${"R-staff-" + stamp}`;
 await sql`delete from sms_templates where name = ${cleanup.templateName}`;
 await sql`delete from appointments where patient_name = 'E2E Patient'`;
 await sql`delete from reminder_logs where patient_name = 'E2E Patient'`;

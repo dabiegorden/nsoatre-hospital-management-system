@@ -37,15 +37,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AddUserDialog, type CreatedUser } from "@/components/add-user-dialog";
+import { ROLE_LABELS } from "@/lib/roles";
+import { errorMessage } from "@/lib/utils";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string | null;
-  role: string;
-  createdAt: string;
-}
+type User = CreatedUser;
 
 const formatDate = (dateString: string): string => {
   return new Intl.DateTimeFormat("en-US", {
@@ -65,6 +61,7 @@ export default function UsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -100,7 +97,7 @@ export default function UsersPage() {
 
   const adminCount = users.filter((u) => u.role === "admin").length;
   const adminsWithoutPhone = users.filter((u) => u.role === "admin" && !u.phoneNumber);
-  const userCount = users.filter((u) => u.role === "user").length;
+  const staffCount = users.filter((u) => u.role === "staff").length;
 
   const handleOpenDialog = (user: User, mode: "edit" | "delete") => {
     setSelectedUser(user);
@@ -149,7 +146,8 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete user");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete user");
       }
 
       setUsers(users.filter((u) => u.id !== selectedUser.id));
@@ -157,7 +155,7 @@ export default function UsersPage() {
       setDialogOpen(false);
     } catch (error) {
       console.error("Delete user error:", error);
-      toast.error("Failed to delete user");
+      toast.error(errorMessage(error) || "Failed to delete user");
     } finally {
       setIsSubmitting(false);
     }
@@ -189,9 +187,13 @@ export default function UsersPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="bg-emerald-50 p-4 rounded-xl">
-                <Users className="h-8 w-8 text-emerald-600" />
-              </div>
+              <Button
+                onClick={() => setAddOpen(true)}
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
             </div>
           </div>
         </div>
@@ -239,10 +241,10 @@ export default function UsersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">
-                    Regular Users
+                    Staff
                   </p>
                   <p className="text-3xl font-bold text-gray-900">
-                    {userCount}
+                    {staffCount}
                   </p>
                 </div>
                 <div className="bg-teal-100 p-3 rounded-lg">
@@ -349,7 +351,7 @@ export default function UsersPage() {
                               {user.role === "admin" && (
                                 <Shield className="h-3 w-3 mr-1" />
                               )}
-                              {user.role}
+                              {ROLE_LABELS[user.role]}
                             </span>
                           </td>
                           <td className="py-4 px-6 text-gray-600">
@@ -408,7 +410,7 @@ export default function UsersPage() {
                                 {user.role === "admin" && (
                                   <Shield className="h-3 w-3 mr-1" />
                                 )}
-                                {user.role}
+                                {ROLE_LABELS[user.role]}
                               </span>
                             </div>
                             <div className="flex gap-1">
@@ -490,7 +492,7 @@ export default function UsersPage() {
             <DialogDescription>
               {dialogMode === "edit"
                 ? "Update the user's role and phone number"
-                : "This action cannot be undone. All user data will be permanently removed."}
+                : "This action cannot be undone. They will no longer be able to log in."}
             </DialogDescription>
           </DialogHeader>
 
@@ -549,10 +551,10 @@ export default function UsersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">
+                      <SelectItem value="staff">
                         <div className="flex items-center gap-2">
                           <UserPlus className="h-4 w-4 text-emerald-600" />
-                          <span>User</span>
+                          <span>Staff</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="admin">
@@ -570,8 +572,8 @@ export default function UsersPage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm text-red-800">
                     Are you sure you want to delete{" "}
-                    <strong>{selectedUser.name}</strong>? This will permanently
-                    remove their account and all associated data.
+                    <strong>{selectedUser.name}</strong>? Their account will be
+                    removed; records they created are kept.
                   </p>
                 </div>
               )}
@@ -609,6 +611,12 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddUserDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreated={(user) => setUsers((prev) => [user, ...prev])}
+      />
     </div>
   );
 }

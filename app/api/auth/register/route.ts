@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { hashPassword, generateToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/db-utils";
+import { secretsMatch } from "@/lib/api-auth";
 import { users } from "@/models/schema";
 import { errorMessage } from "@/lib/utils";
 
@@ -12,7 +13,7 @@ const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { password, secretKey, role } = body;
+    const { password, secretKey } = body;
     const email = body.email?.trim().toLowerCase();
     const name = body.name?.trim();
     const phoneNumber = body.phoneNumber?.trim();
@@ -52,16 +53,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userRole: "admin" | "user" = role === "admin" ? "admin" : "user";
-
-    // Verify admin secret key if admin role is requested
-    if (userRole === "admin") {
-      if (!secretKey || secretKey !== ADMIN_SECRET_KEY) {
-        return NextResponse.json(
-          { message: "Invalid admin secret key" },
-          { status: 401 }
-        );
-      }
+    // Self-registration only creates admins and always needs the secret key.
+    // Staff accounts are created by an admin on the Users page.
+    if (!secretsMatch(secretKey, ADMIN_SECRET_KEY)) {
+      return NextResponse.json(
+        { message: "Invalid admin secret key" },
+        { status: 401 }
+      );
     }
 
     // Hash password
@@ -75,7 +73,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         phoneNumber,
-        role: userRole,
+        role: "admin",
       })
       .returning();
 

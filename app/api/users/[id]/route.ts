@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
-import { verifyToken } from "@/lib/auth";
+import { and, eq, ne } from "drizzle-orm";
+import { requireAdmin } from "@/lib/api-auth";
 import { toE164 } from "@/lib/phone";
+import { isRole } from "@/lib/roles";
 import { db } from "@/lib/db";
-import { users } from "@/models/schema";
+import { users, type NewUser } from "@/models/schema";
+
+/** True if some admin other than `userId` exists. */
+async function hasOtherAdmin(userId: string) {
+  const [other] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, "admin"), ne(users.id, userId)))
+    .limit(1);
+  return Boolean(other);
+}
 
 // PATCH update user role and/or phone number (admins receive alert SMS on it)
 export async function PATCH(
@@ -12,26 +22,34 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const payload = await verifyToken(token);
-
-    if (!payload || payload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const admin = await requireAdmin(request);
+    if (admin instanceof NextResponse) return admin;
 
     const { id } = await params;
-    const body = await request.json();
-    const updates: { role?: "admin" | "user"; phoneNumber?: string | null } = {};
+    const body = (await request.json()) as Record<string, unknown>;
+    const updates: Pick<Partial<NewUser>, "role" | "phoneNumber"> = {};
 
     if (body.role !== undefined) {
-      if (!["admin", "user"].includes(body.role)) {
-        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      if (!isRole(body.role)) {
+        return NextResponse.json(
+          { error: "Role must be admin or staff" },
+          { status: 400 }
+        );
+      }
+      if (body.role !== "admin") {
+        // Never leave the hospital without an admin, or lock yourself out.
+        if (id === admin.userId) {
+          return NextResponse.json(
+            { error: "You cannot remove your own admin access" },
+            { status: 400 }
+          );
+        }
+        if (!(await hasOtherAdmin(id))) {
+          return NextResponse.json(
+            { error: "There must be at least one admin" },
+            { status: 400 }
+          );
+        }
       }
       updates.role = body.role;
     }
@@ -79,29 +97,19 @@ export async function PATCH(
   }
 }
 
-// DELETE user
+// DELETE user (admins only)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const payload = await verifyToken(token);
-
-    if (!payload || payload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const admin = await requireAdmin(request);
+    if (admin instanceof NextResponse) return admin;
 
     const { id } = await params;
 
     // Prevent deleting yourself
-    if (id === payload.userId) {
+    if (id === admin.userId) {
       return NextResponse.json(
         { error: "You cannot delete your own account" },
         { status: 400 }
